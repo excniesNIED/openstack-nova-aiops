@@ -1,0 +1,84 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+  spark-master:
+    image: bitnami/spark:3.5
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    volumes:
+      - ../:/opt/workspace:ro
+      - ./streaming:/opt/pipeline/streaming:ro
+      - spark-checkpoints:/opt/checkpoints
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "8081:8081"
+
+  backend:
+    image: python:3.10-slim
+    depends_on:
+      - kafka
+    ports:
+      - "8000:8000"
+    environment:
+      APP_KAFKA_BOOTSTRAP: "kafka:9092"
+      APP_KAFKA_FEATURES_TOPIC: "openstack.features"
+      APP_DB_URL: "sqlite:////data/alerts.db"
+      APP_MODEL_DIR: "/models"
+      APP_ALERT_THRESHOLD: "0.7"
+    volumes:
+      - "../label&train/output/artifacts:/models:ro"
+      - alerts-db:/data
+      - ./service:/app:ro
+    working_dir: /app
+    command: >
+      bash -lc "
+      pip install --no-cache-dir -r /app/requirements-service.txt &&
+      python -m service.app
+      "
+
+volumes:
+  alerts-db:
+  spark-checkpoints:
