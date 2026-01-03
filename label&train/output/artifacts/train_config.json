@@ -1,0 +1,16 @@
+{
+  "backend": "sklearn",
+  "batch_size": 256,
+  "class_weight": "balanced",
+  "device": "cpu",
+  "epochs": 50,
+  "hash_dim": 8192,
+  "lr": 0.001,
+  "max_iter": 2000,
+  "model": "LogisticRegression(multinomial)",
+  "patience": 7,
+  "seed": 42,
+  "train_ratio": 0.7,
+  "val_ratio": 0.15,
+  "weight_decay": 0.0001
+}

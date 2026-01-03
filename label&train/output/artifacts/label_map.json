@@ -1,0 +1,6 @@
+{
+  "0": "normal",
+  "1": "fault_vm_destroy_after_create",
+  "2": "fault_network_dhcpoff",
+  "3": "fault_libvirt_domain_undefine"
+}
