@@ -1,0 +1,15 @@
+# Base (CPU) dependencies for dataset build + metrics
+joblib>=1.3
+numpy>=1.24
+scikit-learn>=1.3
+
+# Optional conveniences (not strictly required)
+pandas>=2.0
+matplotlib>=3.7
+
+# GPU (Intel Arc / XPU) note:
+# - The training script can use PyTorch on Intel XPU if you install an XPU-enabled PyTorch build.
+# - Exact packages differ by OS/driver; follow Intel/PyTorch XPU install guide, then run:
+#     python -c "import torch; print(torch.xpu.is_available())"
+# - After XPU is available, run training with:
+#     python "label&train/train_model.py" --backend torch --device xpu ...
