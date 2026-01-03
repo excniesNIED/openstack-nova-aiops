@@ -1,0 +1,8 @@
+fastapi==0.115.6
+uvicorn[standard]==0.30.6
+kafka-python==2.0.2
+SQLAlchemy==2.0.36
+pydantic==2.10.3
+joblib==1.5.1
+numpy==2.2.6
+scikit-learn==1.7.2
