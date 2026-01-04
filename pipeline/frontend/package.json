@@ -1,0 +1,41 @@
+{
+  "name": "frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "run-p type-check \"build-only {@}\" --",
+    "preview": "vite preview",
+    "build-only": "vite build",
+    "type-check": "vue-tsc --build",
+    "lint": "oxlint src --vue-plugin && eslint src --ext .vue,.ts,.tsx",
+    "lint:fix": "oxlint src --vue-plugin --fix && eslint src --ext .vue,.ts,.tsx --fix"
+  },
+  "dependencies": {
+    "@devui-design/icons": "^1.4.0",
+    "vue": "^3.5.26",
+    "vue-data-ui": "^3.10.0",
+    "vue-devui": "^1.6.35"
+  },
+  "devDependencies": {
+    "@tsconfig/node24": "^24.0.3",
+    "@types/node": "^24.10.4",
+    "@typescript-eslint/eslint-plugin": "^8.51.0",
+    "@typescript-eslint/parser": "^8.51.0",
+    "@vitejs/plugin-vue": "^6.0.3",
+    "@vue/tsconfig": "^0.8.1",
+    "eslint": "^9.39.2",
+    "eslint-plugin-vue": "^10.6.2",
+    "npm-run-all2": "^8.0.4",
+    "oxlint": "^1.36.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.0",
+    "vite-plugin-vue-devtools": "^8.0.5",
+    "vue-eslint-parser": "^10.2.0",
+    "vue-tsc": "^3.2.1"
+  }
+}
