@@ -1,6 +1,6 @@
 # OpenStack AIOps 看板（对接 `pipeline/service` 后端）
 
-一个科幻风格的监控看板前端应用（AIOps Demo），使用 Vue 3 + TypeScript 构建，采用 [Vue DevUI](https://github.com/DevCloudFE/vue-devui) 作为 UI 组件库，[vue-data-ui](https://github.com/graphieros/vue-data-ui) 作为数据可视化组件库。
+一个科幻风格的监控看板前端应用，使用 Vue 3 + TypeScript 构建，采用 [Vue DevUI](https://github.com/DevCloudFE/vue-devui) 作为 UI 组件库，[vue-data-ui](https://github.com/graphieros/vue-data-ui) 作为数据可视化组件库。
 
 ## ✨ 特性
 

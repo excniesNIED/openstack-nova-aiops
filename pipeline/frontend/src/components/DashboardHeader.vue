@@ -29,7 +29,7 @@ const statusText = () => {
         </div>
         <div class="logo-text">
           <h1>OPENSTACK</h1>
-          <span>Nova 日志告警看板（AIOps Demo）</span>
+          <span>Nova 日志告警看板</span>
         </div>
       </div>
     </div>
@@ -60,9 +60,6 @@ const statusText = () => {
       </div>
       <d-button variant="outline" class="header-btn" @click="props.onOpenSettings?.()">
         <i class="icon icon-setting"></i>
-      </d-button>
-      <d-button variant="outline" class="header-btn">
-        <i class="icon icon-notification"></i>
       </d-button>
     </div>
   </header>
