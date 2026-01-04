@@ -240,7 +240,7 @@ def main() -> None:
 
     df_join = df_join.withColumn("top_templates", top_templates_udf(F.col("template_counts")))
 
-	    # dataset_id is constant for most replay runs; attach "first seen" best-effort.
+    # dataset_id is constant for most replay runs; attach "first seen" best-effort.
     df_ds = df_records.groupBy(w.alias("w"), "entity_key").agg(F.first("dataset_id").alias("dataset_id"))
     df_join = df_join.join(df_ds, on=["w", "entity_key"], how="left")
 
