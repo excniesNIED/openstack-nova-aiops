@@ -9,13 +9,23 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
 from .db import get_alert, init_db, list_alerts, make_engine
+from .replay import ReplayController, replay_config_from_env
 from .worker import InferenceWorker, config_from_env
 
 
+class StartReplayRequest(BaseModel):
+    dataset_id: str = Field(default="sample", min_length=1)
+    log_name: Optional[str] = None
+    rate: Optional[float] = Field(default=None, ge=0)
+    loop: bool = False
+    max_records: int = Field(default=0, ge=0)
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="OpenStack AIOps (Scheme Pipeline)", version="1.0")
+    app = FastAPI(title="OpenStack AIOps (Scheme Pipeline)", version="1.1")
 
     app.add_middleware(
         CORSMiddleware,
@@ -32,6 +42,8 @@ def create_app() -> FastAPI:
     cfg = config_from_env()
     worker = InferenceWorker(cfg)
 
+    replay = ReplayController(replay_config_from_env())
+
     @app.on_event("startup")
     def _startup() -> None:
         worker.start()
@@ -42,7 +54,46 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     def health():
-        return {"ok": True}
+        st = replay.status()
+        return {"ok": True, "replay_running": bool(st.get("running"))}
+
+    @app.get("/control/status")
+    def control_status():
+        return replay.status()
+
+    @app.get("/control/logs")
+    def control_logs():
+        return replay.list_logs()
+
+    @app.post("/control/start")
+    def control_start(req: StartReplayRequest):
+        # Common datasets used in this project; caller may still pass an explicit log_name.
+        dataset_to_log = {
+            "sample": "openstack-nova-sample.log",
+            "normal": "openstack-nova-normal-vm-create.log",
+            "fault1": "openstack-vm-destroy-immediately-after-create.log",
+            "fault2": "openstack-nova-dhcpoff.log",
+            "fault3": "openstack-nova-undefine-vm-after-create.log",
+        }
+        log_name = (req.log_name or "").strip() or dataset_to_log.get(req.dataset_id)
+        if not log_name:
+            raise HTTPException(status_code=400, detail="log_name is required (or use a known dataset_id)")
+        try:
+            replay.start(
+                dataset_id=req.dataset_id,
+                log_name=log_name,
+                rate=req.rate,
+                loop=req.loop,
+                max_records=req.max_records,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return replay.status()
+
+    @app.post("/control/stop")
+    def control_stop():
+        replay.stop()
+        return replay.status()
 
     @app.get("/alerts")
     def alerts(limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0), status: Optional[str] = None):
