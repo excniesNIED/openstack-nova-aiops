@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import time
 from typing import Any, Dict, Optional
 
-from sqlalchemy import JSON, Float, Integer, String, create_engine
+from sqlalchemy import JSON, Float, Integer, String, create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.exc import IntegrityError
 
@@ -42,10 +43,31 @@ def make_engine(db_url: str):
     # sqlite:///relative.db or sqlite:////abs/path.db
     if db_url.startswith("sqlite:"):
         return create_engine(db_url, connect_args={"check_same_thread": False})
-    return create_engine(db_url)
+    return create_engine(db_url, pool_pre_ping=True)
+
+
+def wait_for_db(engine, *, timeout_sec: float = 30.0, interval_sec: float = 1.0) -> None:
+    """
+    Wait until the DB is reachable (mainly for containerized DBs like MariaDB).
+    """
+    if str(engine.url.drivername).startswith("sqlite"):
+        return
+    deadline = time.time() + float(timeout_sec)
+    last_err: Optional[Exception] = None
+    while time.time() < deadline:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            return
+        except Exception as e:
+            last_err = e
+            time.sleep(float(interval_sec))
+    if last_err:
+        raise last_err
 
 
 def init_db(engine) -> None:
+    wait_for_db(engine)
     Base.metadata.create_all(engine)
 
 
