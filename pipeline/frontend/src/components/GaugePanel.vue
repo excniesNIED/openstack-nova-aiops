@@ -1,11 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-
-const gauges = ref([
-  { name: 'CPU', value: 67, color: '#00f0ff' },
-  { name: '内存', value: 54, color: '#ff00ff' },
-  { name: '磁盘', value: 78, color: '#00ff88' },
-])
+const props = defineProps<{
+  title?: string
+  gauges: Array<{ name: string; value: number; color: string }>
+}>()
 
 const createGaugeConfig = (color: string) => ({
   style: {
@@ -58,34 +55,17 @@ const createGaugeConfig = (color: string) => ({
     },
   },
 })
-
-let updateInterval: number | null = null
-
-const updateGauges = () => {
-  gauges.value = gauges.value.map(g => ({
-    ...g,
-    value: Math.min(100, Math.max(20, g.value + (Math.random() - 0.5) * 10)),
-  }))
-}
-
-onMounted(() => {
-  updateInterval = window.setInterval(updateGauges, 2000)
-})
-
-onUnmounted(() => {
-  if (updateInterval) clearInterval(updateInterval)
-})
 </script>
 
 <template>
   <div class="gauge-panel">
-    <h3 class="panel-title">系统负载</h3>
+    <h3 class="panel-title">{{ props.title ?? '系统指标' }}</h3>
     <div class="gauges-grid">
-      <div v-for="gauge in gauges" :key="gauge.name" class="gauge-item">
+      <div v-for="gauge in props.gauges" :key="gauge.name" class="gauge-item">
         <VueUiGauge 
           :config="createGaugeConfig(gauge.color)" 
           :dataset="{
-            value: gauge.value,
+            value: Math.max(0, Math.min(100, Number(gauge.value) || 0)),
             series: [
               { from: 0, to: 60, color: '#00ff88', name: '正常' },
               { from: 60, to: 85, color: '#ffaa00', name: '偏高' },

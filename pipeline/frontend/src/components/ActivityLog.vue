@@ -1,54 +1,24 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed } from 'vue'
+import type { Alert } from '@/api/types'
 
-interface LogEntry {
-  id: number
-  time: string
-  type: 'info' | 'success' | 'warning' | 'error'
-  message: string
-}
+type LogType = 'info' | 'success' | 'warning' | 'error'
 
-const logs = ref<LogEntry[]>([
-  { id: 1, time: '10:42:15', type: 'success', message: '数据同步完成 - 节点 A12' },
-  { id: 2, time: '10:41:58', type: 'info', message: '新任务已分配 - Task #2847' },
-  { id: 3, time: '10:41:32', type: 'warning', message: '节点 B07 响应延迟' },
-  { id: 4, time: '10:40:45', type: 'success', message: '批处理作业完成' },
-  { id: 5, time: '10:40:12', type: 'info', message: '数据流接入 - Stream #156' },
-  { id: 6, time: '10:39:28', type: 'error', message: '连接超时 - 节点 C03' },
-  { id: 7, time: '10:38:55', type: 'success', message: '缓存刷新完成' },
-])
+const props = defineProps<{
+  alerts: Alert[]
+}>()
 
-const messages = [
-  { type: 'success' as const, message: '数据同步完成' },
-  { type: 'info' as const, message: '新任务已分配' },
-  { type: 'warning' as const, message: '节点响应延迟' },
-  { type: 'success' as const, message: '批处理作业完成' },
-  { type: 'info' as const, message: '数据流接入' },
-  { type: 'error' as const, message: '连接超时' },
-  { type: 'success' as const, message: '缓存刷新完成' },
-  { type: 'info' as const, message: '配置更新' },
-]
+const logs = computed(() => {
+  return props.alerts.slice(0, 7).map((a) => {
+    const t = new Date(a.created_at)
+    const time = Number.isNaN(t.getTime())
+      ? a.created_at
+      : t.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 
-let logId = 8
-let updateInterval: number | null = null
-
-const addLog = () => {
-  const randomMsg = messages[Math.floor(Math.random() * messages.length)]!
-  const newLog: LogEntry = {
-    id: logId++,
-    time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-    type: randomMsg.type,
-    message: `${randomMsg.message} - #${Math.floor(Math.random() * 9000) + 1000}`,
-  }
-  logs.value = [newLog, ...logs.value.slice(0, 6)]
-}
-
-onMounted(() => {
-  updateInterval = window.setInterval(addLog, 4000)
-})
-
-onUnmounted(() => {
-  if (updateInterval) clearInterval(updateInterval)
+    const type: LogType = a.severity === 'P1' ? 'error' : a.severity === 'P2' ? 'warning' : 'info'
+    const message = `[${a.severity}] ${a.pred_class} @ ${a.entity_key} (p=${(a.prob * 100).toFixed(1)}%)`
+    return { id: a.alert_id, time, type, message }
+  })
 })
 
 const getTypeClass = (type: string) => {
@@ -72,12 +42,12 @@ const getTypeIcon = (type: string) => {
 
 <template>
   <div class="activity-log">
-    <h3 class="panel-title">活动日志</h3>
+    <h3 class="panel-title">最新告警（活动流）</h3>
     <div class="log-list">
       <TransitionGroup name="log">
         <div 
-          v-for="log in logs" 
-          :key="log.id" 
+          v-for="log in logs"
+          :key="log.id"
           class="log-entry"
           :class="getTypeClass(log.type)"
         >
@@ -86,6 +56,7 @@ const getTypeIcon = (type: string) => {
           <span class="log-message">{{ log.message }}</span>
         </div>
       </TransitionGroup>
+      <div v-if="logs.length === 0" class="empty">暂无告警</div>
     </div>
   </div>
 </template>
@@ -209,5 +180,11 @@ const getTypeIcon = (type: string) => {
 
 .log-move {
   transition: transform 0.3s ease;
+}
+
+.empty {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  padding: 0.5rem 0.75rem;
 }
 </style>

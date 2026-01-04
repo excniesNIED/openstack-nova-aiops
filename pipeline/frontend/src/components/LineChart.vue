@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch } from 'vue'
 
-const makeWindow = () => {
-  const now = Date.now()
-  const labels = Array.from({ length: 24 }, (_, i) =>
-    new Date(now - (23 - i) * 3600000).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-  )
-  const inbound = Array.from({ length: 24 }, () => Math.floor(Math.random() * 500) + 200)
-  const outbound = inbound.map(v => Math.floor(v * 0.7))
-  return { labels, inbound, outbound }
-}
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    labels: string[]
+    series: Array<{ name: string; color: string; values: number[] }>
+  }>(),
+  { title: '告警趋势（近15分钟）' },
+)
 
 const xyConfig = ref({
   chart: {
@@ -24,13 +23,13 @@ const xyConfig = ref({
         color: '#8888aa',
         fontSize: 10,
         xAxisLabels: {
-          values: [],
+          values: [] as string[],
           rotation: 0,
         },
       },
     },
     title: {
-      text: '实时流量（模拟）',
+      text: props.title,
       color: '#00f0ff',
       fontSize: 16,
       bold: true,
@@ -39,7 +38,7 @@ const xyConfig = ref({
       paddingTop: 12,
     },
     legend: {
-      show: true,
+      show: false,
       backgroundColor: 'transparent',
       color: '#e0e0ff',
       fontSize: 11,
@@ -55,32 +54,22 @@ const xyConfig = ref({
   },
 })
 
-const initial = makeWindow()
-xyConfig.value.chart.grid.labels.xAxisLabels.values = initial.labels
+watch(
+  () => props.labels,
+  (labels) => {
+    xyConfig.value.chart.grid.labels.xAxisLabels.values = labels
+  },
+  { immediate: true },
+)
 
-const xyDataset = ref([
-  { name: '入站流量', type: 'line', series: initial.inbound, color: '#00f0ff' },
-  { name: '出站流量', type: 'line', series: initial.outbound, color: '#ff00ff' },
-])
-
-let updateInterval: number | null = null
-
-const updateData = () => {
-  const next = makeWindow()
-  xyConfig.value.chart.grid.labels.xAxisLabels.values = next.labels
-  xyDataset.value = [
-    { name: '入站流量', type: 'line', series: next.inbound, color: '#00f0ff' },
-    { name: '出站流量', type: 'line', series: next.outbound, color: '#ff00ff' },
-  ]
-}
-
-onMounted(() => {
-  updateInterval = window.setInterval(updateData, 3000)
-})
-
-onUnmounted(() => {
-  if (updateInterval) clearInterval(updateInterval)
-})
+const xyDataset = computed(() =>
+  props.series.map((s) => ({
+    name: s.name,
+    type: 'line' as const,
+    series: s.values,
+    color: s.color,
+  })),
+)
 </script>
 
 <template>

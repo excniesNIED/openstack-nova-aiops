@@ -1,7 +1,18 @@
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   currentTime: string
+  apiBaseUrl: string
+  apiOk: boolean | null
+  apiLatencyMs: number | null
+  alertsCount: number
+  onOpenSettings?: () => void
 }>()
+
+const statusText = () => {
+  if (props.apiOk === true) return 'API 已连接'
+  if (props.apiOk === false) return 'API 离线'
+  return 'API 未检测'
+}
 </script>
 
 <template>
@@ -25,19 +36,19 @@ defineProps<{
 
     <div class="header-center">
       <div class="status-bar">
-        <div class="status-item online">
+        <div class="status-item" :class="{ online: props.apiOk === true }">
           <span class="status-dot"></span>
-          <span>系统在线</span>
+          <span>{{ statusText() }}</span>
         </div>
         <div class="divider"></div>
         <div class="status-item">
           <span>延迟: </span>
-          <span class="highlight">12ms</span>
+          <span class="highlight">{{ props.apiLatencyMs == null ? '--' : `${props.apiLatencyMs}ms` }}</span>
         </div>
         <div class="divider"></div>
         <div class="status-item">
-          <span>连接数: </span>
-          <span class="highlight">1,247</span>
+          <span>告警数: </span>
+          <span class="highlight">{{ props.alertsCount }}</span>
         </div>
       </div>
     </div>
@@ -47,7 +58,7 @@ defineProps<{
         <div class="time-label">系统时间</div>
         <div class="time-value">{{ currentTime }}</div>
       </div>
-      <d-button variant="outline" class="header-btn">
+      <d-button variant="outline" class="header-btn" @click="props.onOpenSettings?.()">
         <i class="icon icon-setting"></i>
       </d-button>
       <d-button variant="outline" class="header-btn">

@@ -1,38 +1,27 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed } from 'vue'
 
-interface ServiceStatus {
-  name: string
-  status: 'online' | 'warning' | 'offline'
-  latency: number
-  uptime: string
-}
+type ServiceStatusKind = 'online' | 'warning' | 'offline' | 'unknown'
 
-const services = ref<ServiceStatus[]>([
-  { name: 'Kafka 集群', status: 'online', latency: 12, uptime: '99.99%' },
-  { name: 'Flink 引擎', status: 'online', latency: 8, uptime: '99.95%' },
-  { name: 'Redis 缓存', status: 'online', latency: 3, uptime: '100%' },
-  { name: 'PostgreSQL', status: 'online', latency: 15, uptime: '99.98%' },
-  { name: 'Elasticsearch', status: 'warning', latency: 45, uptime: '99.87%' },
-  { name: 'API Gateway', status: 'online', latency: 5, uptime: '99.99%' },
-])
+const props = defineProps<{
+  apiBaseUrl: string
+  apiOk: boolean | null
+  apiLatencyMs: number | null
+  lastUpdatedIso: string | null
+  error: string | null
+}>()
 
-let updateInterval: number | null = null
+const services = computed(() => {
+  const apiStatus: ServiceStatusKind = props.apiOk === true ? 'online' : props.apiOk === false ? 'offline' : 'unknown'
+  const apiLatency = props.apiLatencyMs ?? 0
+  const apiUptime = props.apiOk === true ? 'OK' : props.apiOk === false ? 'DOWN' : '--'
 
-const updateStatus = () => {
-  services.value = services.value.map(s => ({
-    ...s,
-    latency: Math.max(1, s.latency + Math.floor((Math.random() - 0.5) * 10)),
-    status: Math.random() > 0.95 ? 'warning' : s.status === 'warning' && Math.random() > 0.7 ? 'online' : s.status,
-  }))
-}
-
-onMounted(() => {
-  updateInterval = window.setInterval(updateStatus, 3000)
-})
-
-onUnmounted(() => {
-  if (updateInterval) clearInterval(updateInterval)
+  return [
+    { name: 'FastAPI Backend', status: apiStatus, latency: apiLatency, uptime: apiUptime },
+    { name: 'Kafka', status: 'unknown' as const, latency: 0, uptime: '--' },
+    { name: 'Spark', status: 'unknown' as const, latency: 0, uptime: '--' },
+    { name: 'SQLite(DB)', status: 'unknown' as const, latency: 0, uptime: '--' },
+  ]
 })
 
 const getStatusClass = (status: string) => {
@@ -40,6 +29,7 @@ const getStatusClass = (status: string) => {
     online: 'status-online',
     warning: 'status-warning',
     offline: 'status-offline',
+    unknown: 'status-unknown',
   }[status] || 'status-online'
 }
 
@@ -48,6 +38,7 @@ const getStatusText = (status: string) => {
     online: '运行中',
     warning: '警告',
     offline: '离线',
+    unknown: '未知',
   }[status] || '未知'
 }
 </script>
@@ -69,7 +60,17 @@ const getStatusText = (status: string) => {
           <span class="dot"></span>
           {{ services.filter(s => s.status === 'offline').length }} 离线
         </span>
+        <span class="summary-item unknown">
+          <span class="dot"></span>
+          {{ services.filter(s => s.status === 'unknown').length }} 未检测
+        </span>
       </div>
+    </div>
+
+    <div class="meta">
+      <div class="mono">API: {{ props.apiBaseUrl }}</div>
+      <div class="mono">Last: {{ props.lastUpdatedIso ? new Date(props.lastUpdatedIso).toLocaleTimeString('zh-CN') : '--' }}</div>
+      <div v-if="props.error" class="mono err">{{ props.error }}</div>
     </div>
     
     <div class="services-grid">
@@ -89,7 +90,7 @@ const getStatusText = (status: string) => {
         <div class="service-metrics">
           <div class="metric">
             <span class="metric-label">延迟</span>
-            <span class="metric-value">{{ service.latency }}ms</span>
+            <span class="metric-value">{{ service.latency ? `${service.latency}ms` : '--' }}</span>
           </div>
           <div class="metric">
             <span class="metric-label">可用性</span>
@@ -174,9 +175,31 @@ const getStatusText = (status: string) => {
   box-shadow: 0 0 8px #ff4444;
 }
 
+.summary-item.unknown .dot {
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
+}
+
+.meta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+.err {
+  color: #ff4444;
+}
+
 .services-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.75rem;
 }
 
@@ -208,6 +231,10 @@ const getStatusText = (status: string) => {
   border-left: 3px solid #ff4444;
 }
 
+.service-card.status-unknown {
+  border-left: 3px solid rgba(255, 255, 255, 0.25);
+}
+
 .service-indicator {
   display: flex;
   align-items: center;
@@ -233,6 +260,11 @@ const getStatusText = (status: string) => {
 .status-offline .indicator-dot {
   background: #ff4444;
   box-shadow: 0 0 10px #ff4444;
+}
+
+.status-unknown .indicator-dot {
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.15);
 }
 
 @keyframes pulse {

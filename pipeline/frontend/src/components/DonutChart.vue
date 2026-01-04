@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+
+const props = defineProps<{
+  title?: string
+  items: Array<{ name: string; value: number; color: string }>
+}>()
 
 const donutConfig = ref({
   style: {
@@ -58,7 +63,7 @@ const donutConfig = ref({
         },
       },
       title: {
-        text: '资源分配',
+        text: props.title ?? '告警等级分布',
         color: '#00f0ff',
         fontSize: 16,
         bold: true,
@@ -67,7 +72,7 @@ const donutConfig = ref({
         paddingTop: 12,
       },
       legend: {
-        show: true,
+        show: false,
         backgroundColor: 'transparent',
         color: '#e0e0ff',
         fontSize: 11,
@@ -84,33 +89,25 @@ const donutConfig = ref({
   },
 })
 
-const donutDataset = ref([
-  {
-    name: '计算资源',
-    values: [35],
-    color: '#00f0ff',
-  },
-  {
-    name: '存储资源',
-    values: [28],
-    color: '#ff00ff',
-  },
-  {
-    name: '网络带宽',
-    values: [22],
-    color: '#00ff88',
-  },
-  {
-    name: '缓存空间',
-    values: [15],
-    color: '#ffaa00',
-  },
-])
+const donutDataset = computed(() =>
+  props.items.map((it) => ({
+    name: it.name,
+    values: [it.value],
+    color: it.color,
+  })),
+)
 </script>
 
 <template>
   <div class="donut-chart">
     <VueUiDonut :config="donutConfig" :dataset="donutDataset" />
+    <div class="legend">
+      <div v-for="it in props.items" :key="it.name" class="legend-item">
+        <span class="dot" :style="{ background: it.color }"></span>
+        <span class="name">{{ it.name }}</span>
+        <span class="value mono">{{ it.value }}</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -122,5 +119,41 @@ const donutDataset = ref([
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.legend {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem 0.75rem;
+  padding: 0 0.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
+}
+
+.name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
 </style>

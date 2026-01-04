@@ -1,4 +1,4 @@
-# OpenStack AIOps 看板
+# OpenStack AIOps 看板（对接 `pipeline/service` 后端）
 
 一个科幻风格的监控看板前端应用（AIOps Demo），使用 Vue 3 + TypeScript 构建，采用 [Vue DevUI](https://github.com/DevCloudFE/vue-devui) 作为 UI 组件库，[vue-data-ui](https://github.com/graphieros/vue-data-ui) 作为数据可视化组件库。
 
@@ -7,7 +7,7 @@
 - 🎨 **科幻主题设计** - 赛博朋克风格的深色主题，霓虹色彩搭配
 - 🌟 **动态视觉效果** - 流光边框、脉冲动画、扫描线效果
 - 📊 **丰富的数据可视化** - 折线图、雷达图、环形图、仪表盘等
-- 🔄 **实时数据更新** - 模拟实时数据流，动态刷新图表
+- 🔄 **实时数据更新** - 轮询 FastAPI `/alerts`，动态刷新图表与告警列表
 - 📱 **响应式布局** - 适配不同屏幕尺寸
 - ⚡ **Bun 包管理** - 使用 Bun 作为包管理器，更快的安装和构建速度
 
@@ -64,6 +64,32 @@ bun run dev
 
 访问 http://localhost:5173 查看应用。
 
+## 🔌 与后端联调（按 `pipeline/` 全链路）
+
+后端来自 `pipeline/service`（FastAPI），默认端口 `8000`，提供：
+
+- `GET /health`
+- `GET /alerts?limit=200`
+- `GET /alerts/{alert_id}`
+
+前端默认通过 Vite 代理访问后端：
+
+- 浏览器请求 `GET /api/alerts`
+- Vite 代理转发到 `http://localhost:8000/alerts`
+
+如果你的后端不是 `localhost:8000`，可用两种方式指定：
+
+1) 启动 dev server 时设置环境变量（影响 Vite 代理）：
+
+```bash
+VITE_API_PROXY_TARGET=http://localhost:8000 bun run dev
+```
+
+2) 运行后，在页面右上角「设置」里修改 `API Base URL`：
+
+- 推荐：`/api`（走代理）
+- 或直接写：`http://<host>:8000`（直连，后端已开启 CORS）
+
 ### 生产构建
 
 ```bash
@@ -109,22 +135,22 @@ bun run type-check
 统计卡片，展示关键指标数据，支持多种颜色主题和动态变化指示。
 
 ### LineChart
-基于 vue-data-ui 的折线图，展示实时数据流量（当前为模拟数据），支持多系列数据。
+基于 vue-data-ui 的折线图，展示近 15 分钟告警趋势（P1/P2/P3）。
 
 ### RadarChart
 雷达图组件，用于展示多维度性能指标对比。
 
 ### DonutChart
-环形图组件，展示资源分配比例。
+环形图组件，展示告警等级分布。
 
 ### GaugePanel
-仪表盘面板，实时展示 CPU、内存、磁盘等系统负载。
+仪表盘面板，展示由告警派生的健康度/压力/置信度（0-100）。
 
 ### ActivityLog
-活动日志组件，展示系统事件流，支持不同类型的日志样式。
+活动流组件，展示最新告警摘要（时间、等级、类型、实体、置信度）。
 
 ### SystemStatus
-系统状态面板，展示各服务的运行状态、延迟和可用性。
+系统状态面板，展示后端 API 连通性与延迟（其余链路组件目前标记为“未检测”）。
 
 ## 🎨 主题定制
 

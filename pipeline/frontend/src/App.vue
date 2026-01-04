@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import DashboardHeader from './components/DashboardHeader.vue'
 import StatsCard from './components/StatsCard.vue'
 import RadarChart from './components/RadarChart.vue'
@@ -8,9 +8,137 @@ import LineChart from './components/LineChart.vue'
 import GaugePanel from './components/GaugePanel.vue'
 import ActivityLog from './components/ActivityLog.vue'
 import SystemStatus from './components/SystemStatus.vue'
+import AlertsTable from './components/AlertsTable.vue'
+import { useApiBaseUrl } from './composables/useApiBaseUrl'
+import { usePipelineAlerts } from './composables/usePipelineAlerts'
 
 const currentTime = ref(new Date().toLocaleTimeString())
 let timeInterval: number | null = null
+
+const { apiBaseUrl } = useApiBaseUrl()
+const { alerts, loading, error, apiOk, apiLatencyMs, lastUpdatedIso, refresh } = usePipelineAlerts(apiBaseUrl, {
+  pollMs: 3000,
+  limit: 200,
+})
+
+const settingsOpen = ref(false)
+const apiBaseUrlDraft = ref(apiBaseUrl.value)
+
+const openSettings = () => {
+  apiBaseUrlDraft.value = apiBaseUrl.value
+  settingsOpen.value = true
+}
+
+const saveSettings = () => {
+  apiBaseUrl.value = apiBaseUrlDraft.value.trim() || apiBaseUrl.value
+  settingsOpen.value = false
+}
+
+const countBySeverity = computed(() => {
+  const counts = { P1: 0, P2: 0, P3: 0 }
+  for (const a of alerts.value) {
+    if (a.severity === 'P1') counts.P1++
+    else if (a.severity === 'P2') counts.P2++
+    else counts.P3++
+  }
+  return counts
+})
+
+const kpiCards = computed(() => {
+  const c = countBySeverity.value
+  const total = alerts.value.length
+  return [
+    { title: '告警总数', value: String(total), change: '+0', icon: 'icon icon-notification', color: 'cyan' as const },
+    { title: 'P1 告警', value: String(c.P1), change: '+0', icon: 'icon icon-error', color: 'magenta' as const },
+    { title: 'P2 告警', value: String(c.P2), change: '+0', icon: 'icon icon-warning', color: 'orange' as const },
+    { title: 'P3/其他', value: String(c.P3), change: '+0', icon: 'icon icon-success', color: 'green' as const },
+  ]
+})
+
+const donutItems = computed(() => {
+  const c = countBySeverity.value
+  return [
+    { name: 'P1', value: c.P1, color: '#ff4444' },
+    { name: 'P2', value: c.P2, color: '#ffaa00' },
+    { name: 'P3', value: c.P3, color: '#00ff88' },
+  ]
+})
+
+const trend = computed(() => {
+  const minutes = 15
+  const now = Date.now()
+  const buckets = Array.from({ length: minutes }, (_, i) => now - (minutes - 1 - i) * 60_000)
+  const labels = buckets.map((ts) => new Date(ts).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }))
+
+  const p1 = Array<number>(minutes).fill(0)
+  const p2 = Array<number>(minutes).fill(0)
+  const p3 = Array<number>(minutes).fill(0)
+
+  for (const a of alerts.value) {
+    const t = new Date(a.created_at).getTime()
+    if (Number.isNaN(t)) continue
+    const deltaMs = now - t
+    if (deltaMs < 0 || deltaMs > minutes * 60_000) continue
+    const idx = minutes - 1 - Math.floor(deltaMs / 60_000)
+    if (idx < 0 || idx >= minutes) continue
+    if (a.severity === 'P1') p1[idx]++
+    else if (a.severity === 'P2') p2[idx]++
+    else p3[idx]++
+  }
+
+  return {
+    labels,
+    series: [
+      { name: 'P1', color: '#ff4444', values: p1 },
+      { name: 'P2', color: '#ffaa00', values: p2 },
+      { name: 'P3', color: '#00ff88', values: p3 },
+    ],
+  }
+})
+
+const latestAlert = computed(() => alerts.value[0] ?? null)
+
+const radar = computed(() => {
+  const a = latestAlert.value
+  const counts = a?.evidence?.counts
+  const total = counts?.total_records ?? 0
+  const errorRatio = Number(a?.evidence?.error_ratio ?? 0)
+  const warnRatio = total > 0 ? (counts?.warn_cnt ?? 0) / total : 0
+  const uniqueTemplates = Object.keys(a?.evidence?.template_counts ?? {}).length
+  const uniqueKeywords = Object.keys(a?.evidence?.keyword_counts ?? {}).length
+  const prob = a?.prob ?? 0
+
+  const clamp = (v: number) => Math.max(0, Math.min(100, v))
+  const scaleLog = (v: number, max: number) => clamp((Math.log1p(Math.max(0, v)) / Math.log1p(max)) * 100)
+
+  const values = [
+    clamp(errorRatio * 100),
+    clamp(warnRatio * 100),
+    clamp(uniqueTemplates * 10),
+    clamp(uniqueKeywords * 20),
+    clamp(prob * 100),
+    scaleLog(total, 200),
+  ]
+
+  return {
+    categories: ['ERROR%', 'WARN%', 'Templates', 'Keywords', 'Prob%', 'Records'],
+    current: values,
+    baseline: [10, 10, 20, 20, 50, 40],
+  }
+})
+
+const gauges = computed(() => {
+  const c = countBySeverity.value
+  const total = alerts.value.length || 1
+  const healthScore = Math.max(0, Math.min(100, 100 - (c.P1 / total) * 80 - (c.P2 / total) * 40))
+  const pressure = Math.max(0, Math.min(100, ((c.P1 * 3 + c.P2 * 2 + c.P3) / total) * 20))
+  const confidence = Math.max(0, Math.min(100, (latestAlert.value?.prob ?? 0) * 100))
+  return [
+    { name: '健康度', value: healthScore, color: '#00f0ff' },
+    { name: '压力', value: pressure, color: '#ff00ff' },
+    { name: '置信度', value: confidence, color: '#00ff88' },
+  ]
+})
 
 onMounted(() => {
   timeInterval = window.setInterval(() => {
@@ -25,69 +153,90 @@ onUnmounted(() => {
 
 <template>
   <div class="dashboard">
-    <DashboardHeader :current-time="currentTime" />
+    <DashboardHeader
+      :current-time="currentTime"
+      :api-base-url="apiBaseUrl"
+      :api-ok="apiOk"
+      :api-latency-ms="apiLatencyMs"
+      :alerts-count="alerts.length"
+      :on-open-settings="openSettings"
+    />
     
     <main class="dashboard-content">
       <!-- Stats Row -->
       <section class="stats-row">
-        <StatsCard 
-          title="数据流量" 
-          value="2.4 TB" 
-          change="+12.5%" 
-          icon="icon-data" 
-          color="cyan"
-        />
-        <StatsCard 
-          title="活跃节点" 
-          value="128" 
-          change="+3" 
-          icon="icon-node" 
-          color="magenta"
-        />
-        <StatsCard 
-          title="处理任务" 
-          value="1,847" 
-          change="+156" 
-          icon="icon-task" 
-          color="green"
-        />
-        <StatsCard 
-          title="系统负载" 
-          value="67%" 
-          change="-2.3%" 
-          icon="icon-cpu" 
-          color="orange"
+        <StatsCard
+          v-for="c in kpiCards"
+          :key="c.title"
+          :title="c.title"
+          :value="c.value"
+          :change="c.change"
+          :icon="c.icon"
+          :color="c.color"
         />
       </section>
 
       <!-- Main Charts Row -->
       <section class="charts-row">
         <div class="chart-container large">
-          <LineChart />
+          <LineChart :labels="trend.labels" :series="trend.series" />
         </div>
         <div class="chart-container">
-          <RadarChart />
+          <RadarChart :categories="radar.categories" :current="radar.current" :baseline="radar.baseline" />
         </div>
       </section>
 
       <!-- Bottom Row -->
       <section class="bottom-row">
         <div class="chart-container">
-          <DonutChart />
+          <DonutChart :items="donutItems" />
         </div>
         <div class="chart-container">
-          <GaugePanel />
+          <GaugePanel title="系统健康" :gauges="gauges" />
         </div>
         <div class="chart-container">
-          <ActivityLog />
+          <ActivityLog :alerts="alerts" />
+        </div>
+      </section>
+
+      <!-- Alerts Table -->
+      <section class="alerts-row">
+        <div class="chart-container">
+          <div class="alerts-actions">
+            <d-button size="sm" variant="outline" :loading="loading" @click="refresh">手动刷新</d-button>
+            <d-button size="sm" variant="text" @click="openSettings">API 设置</d-button>
+          </div>
+          <AlertsTable :alerts="alerts" :api-base-url="apiBaseUrl" :loading="loading" :error="error" />
         </div>
       </section>
 
       <!-- System Status -->
       <section class="status-row">
-        <SystemStatus />
+        <SystemStatus
+          :api-base-url="apiBaseUrl"
+          :api-ok="apiOk"
+          :api-latency-ms="apiLatencyMs"
+          :last-updated-iso="lastUpdatedIso"
+          :error="error"
+        />
       </section>
     </main>
+
+    <d-modal v-model="settingsOpen" title="API 设置" :close-on-click-overlay="true">
+      <div class="settings">
+        <div class="settings-row">
+          <span class="label">API Base URL</span>
+          <d-input v-model="apiBaseUrlDraft" placeholder="/api 或 http://localhost:8000" />
+        </div>
+        <div class="settings-hint">
+          默认使用 Vite 代理：<span class="mono">/api</span> → <span class="mono">http://localhost:8000</span>
+        </div>
+        <div class="settings-actions">
+          <d-button variant="outline" @click="settingsOpen = false">取消</d-button>
+          <d-button color="primary" variant="solid" @click="saveSettings">保存</d-button>
+        </div>
+      </div>
+    </d-modal>
   </div>
 </template>
 
@@ -124,6 +273,19 @@ onUnmounted(() => {
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
   min-height: 300px;
+}
+
+.alerts-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.alerts-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .status-row {
@@ -186,5 +348,39 @@ onUnmounted(() => {
   .stats-row {
     grid-template-columns: 1fr;
   }
+}
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.settings-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.settings-row .label {
+  width: 110px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.settings-hint {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 </style>
