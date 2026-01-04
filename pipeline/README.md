@@ -132,6 +132,21 @@ curl "http://localhost:8000/alerts/<alert_id>"
 
 ---
 
+## 6.1 前端看板（Vue + DevUI + vue-data-ui）
+
+前端位于 `pipeline/frontend/`，默认通过 Vite 代理对接后端：
+
+```bash
+cd pipeline/frontend
+bun install
+bun run dev
+```
+
+- 前端默认请求 `GET /api/alerts`（Vite 会转发到 `http://localhost:8000/alerts`）
+- 也可以在页面右上角「设置」里把 `API Base URL` 改成 `http://localhost:8000` 直连后端
+
+---
+
 ## 7. 原理（严谨版，答辩可用）
 
 ### 7.1 为什么要“模板化”

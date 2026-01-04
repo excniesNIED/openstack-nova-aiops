@@ -81,9 +81,9 @@ const trend = computed(() => {
     if (deltaMs < 0 || deltaMs > minutes * 60_000) continue
     const idx = minutes - 1 - Math.floor(deltaMs / 60_000)
     if (idx < 0 || idx >= minutes) continue
-    if (a.severity === 'P1') p1[idx]++
-    else if (a.severity === 'P2') p2[idx]++
-    else p3[idx]++
+    if (a.severity === 'P1') p1[idx] = (p1[idx] ?? 0) + 1
+    else if (a.severity === 'P2') p2[idx] = (p2[idx] ?? 0) + 1
+    else p3[idx] = (p3[idx] ?? 0) + 1
   }
 
   return {

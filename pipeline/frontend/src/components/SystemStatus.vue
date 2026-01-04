@@ -12,7 +12,8 @@ const props = defineProps<{
 }>()
 
 const services = computed(() => {
-  const apiStatus: ServiceStatusKind = props.apiOk === true ? 'online' : props.apiOk === false ? 'offline' : 'unknown'
+  const apiStatus: ServiceStatusKind =
+    props.apiOk === true ? (props.apiLatencyMs != null && props.apiLatencyMs > 1000 ? 'warning' : 'online') : props.apiOk === false ? 'offline' : 'unknown'
   const apiLatency = props.apiLatencyMs ?? 0
   const apiUptime = props.apiOk === true ? 'OK' : props.apiOk === false ? 'DOWN' : '--'
 
