@@ -6,3 +6,4 @@ pydantic==2.10.3
 joblib==1.5.1
 numpy==2.2.6
 scikit-learn==1.7.2
+PyMySQL==1.1.1

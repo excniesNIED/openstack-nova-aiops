@@ -24,6 +24,39 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
 
+  mariadb:
+    image: mariadb:11.4
+    environment:
+      MARIADB_ROOT_PASSWORD: "root"
+      MARIADB_DATABASE: "aiops"
+      MARIADB_USER: "aiops"
+      MARIADB_PASSWORD: "aiops"
+    ports:
+      - "13306:3306"
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -proot --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      - kafka
+    entrypoint:
+      - bash
+      - -lc
+      - |
+        cub kafka-ready -b kafka:9092 1 30
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.raw --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.features --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.alerts --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:9092 --list
+        echo "Kafka topics ready."
+    restart: "no"
+
   spark-master:
     image: bitnami/spark:3.5
     environment:
@@ -32,6 +65,8 @@ services:
       - SPARK_RPC_ENCRYPTION_ENABLED=no
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
+      # Optional: enable HDFS client config when starting with --profile hadoop.
+      - HADOOP_CONF_DIR=/opt/bitnami/spark/conf/hadoop
     ports:
       - "7077:7077"
       - "8080:8080"
@@ -39,6 +74,7 @@ services:
       - ../:/opt/workspace:ro
       - ./streaming:/opt/pipeline/streaming:ro
       - spark-checkpoints:/opt/checkpoints
+      - ./hadoop/conf:/opt/bitnami/spark/conf/hadoop:ro
 
   spark-worker:
     image: bitnami/spark:3.5
@@ -53,24 +89,78 @@ services:
       - SPARK_RPC_ENCRYPTION_ENABLED=no
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
+      - HADOOP_CONF_DIR=/opt/bitnami/spark/conf/hadoop
     ports:
       - "8081:8081"
+    volumes:
+      - ./hadoop/conf:/opt/bitnami/spark/conf/hadoop:ro
+
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    profiles: ["hadoop"]
+    environment:
+      CLUSTER_NAME: "openstack-aiops"
+      CORE_CONF_fs_defaultFS: "hdfs://namenode:8020"
+      HDFS_CONF_dfs_replication: "1"
+    ports:
+      - "9870:9870" # NameNode Web UI
+      - "8020:8020" # NameNode RPC
+    volumes:
+      - hadoop-namenode:/hadoop/dfs/name
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    profiles: ["hadoop"]
+    depends_on:
+      - namenode
+    environment:
+      CORE_CONF_fs_defaultFS: "hdfs://namenode:8020"
+      HDFS_CONF_dfs_replication: "1"
+    ports:
+      - "9864:9864" # DataNode Web UI
+    volumes:
+      - hadoop-datanode:/hadoop/dfs/data
+
+  hdfs-init:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    profiles: ["hadoop"]
+    depends_on:
+      - namenode
+      - datanode
+    entrypoint:
+      - bash
+      - -lc
+      - |
+        set -e
+        for i in $(seq 1 30); do
+          hdfs dfs -ls / >/dev/null 2>&1 && break
+          sleep 2
+        done
+        hdfs dfs -mkdir -p /data/openstack/records /data/openstack/features || true
+        hdfs dfs -chmod -R 777 /data/openstack || true
+        echo "HDFS directories ready."
+    restart: "no"
 
   backend:
     image: python:3.10-slim
     depends_on:
       - kafka
+      - mariadb
     ports:
       - "8000:8000"
     environment:
       APP_KAFKA_BOOTSTRAP: "kafka:9092"
       APP_KAFKA_FEATURES_TOPIC: "openstack.features"
       APP_KAFKA_RAW_TOPIC: "openstack.raw"
-      APP_DB_URL: "sqlite:////data/alerts.db"
+      APP_KAFKA_ALERTS_TOPIC: "openstack.alerts"
+      # DB: default to MariaDB for the "big data" scheme; change to sqlite:////data/alerts.db if preferred.
+      APP_DB_URL: "mysql+pymysql://aiops:aiops@mariadb:3306/aiops?charset=utf8mb4"
       APP_MODEL_DIR: "/models"
       APP_ALERT_THRESHOLD: "0.7"
       APP_REPLAY_LOG_DIR: "/opt/workspace"
       APP_REPLAY_RATE: "80"
+      # LLM analysis is optional; default "mock" generates deterministic suggestions without external calls.
+      APP_LLM_MODE: "mock"
     volumes:
       - "../:/opt/workspace:ro"
       - "../label&train/output/artifacts:/models:ro"
@@ -84,5 +174,8 @@ services:
       "
 
 volumes:
+  mariadb-data:
   alerts-db:
   spark-checkpoints:
+  hadoop-namenode:
+  hadoop-datanode:

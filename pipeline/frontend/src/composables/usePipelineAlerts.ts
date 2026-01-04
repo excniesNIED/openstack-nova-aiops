@@ -23,6 +23,39 @@ export function usePipelineAlerts(
   const isReady = computed(() => apiOk.value === true && !loading.value)
 
   let timer: number | null = null
+  let es: EventSource | null = null
+
+  const sseUrl = computed(() => {
+    const base = apiBaseUrl.value.replace(/\/+$/, '')
+    return `${base}/events/alerts`
+  })
+
+  const connectSse = () => {
+    if (typeof EventSource === 'undefined') return
+    try {
+      if (es) es.close()
+      es = new EventSource(sseUrl.value)
+
+      es.addEventListener('alert', (evt) => {
+        try {
+          const data = (evt as MessageEvent<string>).data
+          const a = JSON.parse(data) as Alert
+          const existing = alerts.value.find((x) => x.alert_id === a.alert_id)
+          if (existing) return
+          alerts.value = [a, ...alerts.value].slice(0, limit)
+          lastUpdatedIso.value = new Date().toISOString()
+        } catch {
+          // ignore
+        }
+      })
+
+      es.addEventListener('error', () => {
+        // Server may restart; polling keeps the UI consistent.
+      })
+    } catch {
+      // ignore
+    }
+  }
 
   const refresh = async () => {
     loading.value = true
@@ -49,20 +82,22 @@ export function usePipelineAlerts(
   onMounted(() => {
     void refresh()
     timer = window.setInterval(() => void refresh(), pollMs)
+    connectSse()
   })
 
   onUnmounted(() => {
     if (timer) window.clearInterval(timer)
+    if (es) es.close()
   })
 
   watch(
     apiBaseUrl,
     () => {
       void refresh()
+      connectSse()
     },
     { flush: 'post' },
   )
 
   return { alerts, loading, error, apiOk, apiLatencyMs, lastUpdatedIso, isReady, refresh }
 }
-

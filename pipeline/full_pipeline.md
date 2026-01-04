@@ -102,6 +102,16 @@ Spark 输出，JSON 字段：
 - `error_examples`：最多 5 条 ERROR 原文片段（含行号）
 - `error_cnt/warn_cnt/info_cnt/total_records/error_ratio`
 
+### 3.3 `openstack.alerts`
+
+Worker 输出，JSON 字段（与 `/alerts` API 一致）：
+
+- `alert_id/created_at`
+- `entity_key/window_start/window_end`
+- `pred_class/pred_label_id/prob/threshold`
+- `severity/status`
+- `evidence`（JSON）
+
 ---
 
 ## 4. 存储（SQLite）
@@ -125,12 +135,17 @@ Spark 输出，JSON 字段：
 docker compose -f pipeline/docker-compose.yml up -d
 ```
 
+> 可选：启动 Hadoop(HDFS) 持久化（用于落 Parquet）：
+>
+> `docker compose -f pipeline/docker-compose.yml --profile hadoop up -d`
+
 2) 创建 topics：
 
 ```bash
 docker compose -f pipeline/docker-compose.yml exec kafka bash -lc '
   kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.raw --partitions 3 --replication-factor 1
   kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.features --partitions 3 --replication-factor 1
+  kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.alerts --partitions 3 --replication-factor 1
 '
 ```
 
@@ -147,6 +162,24 @@ docker compose -f pipeline/docker-compose.yml exec spark-master bash -lc '
       --features-topic openstack.features \
       --window 60 \
       --slide 30
+'
+```
+
+如果启用了 HDFS，可额外把明细与窗口特征写入 HDFS（Parquet）：
+
+```bash
+docker compose -f pipeline/docker-compose.yml exec spark-master bash -lc '
+  spark-submit \
+    --master spark://spark-master:7077 \
+    --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
+    /opt/pipeline/streaming/openstack_streaming_job.py \
+      --bootstrap kafka:9092 \
+      --raw-topic openstack.raw \
+      --features-topic openstack.features \
+      --window 60 \
+      --slide 30 \
+      --hdfs-records-path hdfs://namenode:8020/data/openstack/records \
+      --hdfs-features-path hdfs://namenode:8020/data/openstack/features
 '
 ```
 

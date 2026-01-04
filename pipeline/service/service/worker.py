@@ -9,8 +9,11 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from kafka import KafkaConsumer
+from kafka import KafkaProducer
 
+from .broadcast import AlertBroadcaster
 from .db import Alert, init_db, insert_alert, make_engine, utcnow_iso
+from .llm import generate_llm_analysis, llm_config_from_env
 from .model import load_artifacts, predict_one, stable_alert_id
 
 
@@ -18,6 +21,7 @@ from .model import load_artifacts, predict_one, stable_alert_id
 class WorkerConfig:
     kafka_bootstrap: str
     features_topic: str
+    alerts_topic: str
     group_id: str
     db_url: str
     model_dir: Path
@@ -26,15 +30,18 @@ class WorkerConfig:
 
 
 class InferenceWorker:
-    def __init__(self, cfg: WorkerConfig):
+    def __init__(self, cfg: WorkerConfig, *, broadcaster: Optional[AlertBroadcaster] = None):
         self.cfg = cfg
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        self._producer: Optional[KafkaProducer] = None
+        self._broadcaster = broadcaster
 
         self._engine = make_engine(cfg.db_url)
         init_db(self._engine)
 
         self._clf, self._vec, self._label_map = load_artifacts(cfg.model_dir)
+        self._llm_cfg = llm_config_from_env()
 
         # (entity_key, pred_id) -> last_window_end_epoch
         self._dedup: Dict[str, float] = {}
@@ -79,6 +86,14 @@ class InferenceWorker:
             value_deserializer=lambda b: json.loads(b.decode("utf-8", errors="replace")),
             consumer_timeout_ms=1000,
         )
+        producer = KafkaProducer(
+            bootstrap_servers=self.cfg.kafka_bootstrap,
+            value_serializer=lambda d: json.dumps(d, ensure_ascii=False).encode("utf-8"),
+            linger_ms=10,
+            retries=3,
+            acks=1,
+        )
+        self._producer = producer
 
         try:
             while not self._stop.is_set():
@@ -95,6 +110,15 @@ class InferenceWorker:
                             # Keep worker alive; details are surfaced in container logs.
                             continue
         finally:
+            self._producer = None
+            try:
+                producer.flush(timeout=5)
+            except Exception:
+                pass
+            try:
+                producer.close(timeout=5)
+            except Exception:
+                pass
             try:
                 consumer.close(timeout=5)
             except Exception:
@@ -141,6 +165,19 @@ class InferenceWorker:
                 "total_records": int(feature.get("total_records") or 0),
             },
         }
+        llm = generate_llm_analysis(
+            self._llm_cfg,
+            alert_id=alert_id,
+            entity_key=entity_key,
+            window_start=str(feature.get("window_start") or ""),
+            window_end=window_end,
+            pred_class=str(pred_name),
+            severity=severity,
+            prob=float(prob),
+            evidence=evidence,
+        )
+        if llm is not None:
+            evidence["llm"] = llm
 
         a = Alert(
             alert_id=alert_id,
@@ -158,6 +195,44 @@ class InferenceWorker:
         )
 
         insert_alert(self._engine, a)
+        self._emit_alert(a)
+
+    def _emit_alert(self, a: Alert) -> None:
+        alert_msg = {
+            "alert_id": a.alert_id,
+            "created_at": a.created_at,
+            "entity_key": a.entity_key,
+            "window_start": a.window_start,
+            "window_end": a.window_end,
+            "pred_class": a.pred_class,
+            "pred_label_id": a.pred_label_id,
+            "prob": a.prob,
+            "threshold": a.threshold,
+            "severity": a.severity,
+            "status": a.status,
+            "evidence": a.evidence,
+        }
+
+        if self._broadcaster is not None:
+            try:
+                self._broadcaster.publish(alert_msg)
+            except Exception:
+                pass
+
+        if not self.cfg.alerts_topic:
+            return
+        p = self._producer
+        if p is None:
+            return
+        try:
+            p.send(
+                self.cfg.alerts_topic,
+                key=str(a.alert_id).encode("utf-8", errors="ignore"),
+                value=alert_msg,
+            )
+        except Exception:
+            # Best-effort emission; do not disrupt inference.
+            return
 
 
 def config_from_env() -> WorkerConfig:
@@ -165,6 +240,7 @@ def config_from_env() -> WorkerConfig:
     return WorkerConfig(
         kafka_bootstrap=os.environ.get("APP_KAFKA_BOOTSTRAP", "kafka:9092"),
         features_topic=os.environ.get("APP_KAFKA_FEATURES_TOPIC", "openstack.features"),
+        alerts_topic=os.environ.get("APP_KAFKA_ALERTS_TOPIC", "openstack.alerts"),
         group_id=os.environ.get("APP_KAFKA_GROUP_ID", "openstack-inference"),
         db_url=os.environ.get("APP_DB_URL", "sqlite:////data/alerts.db"),
         model_dir=model_dir,

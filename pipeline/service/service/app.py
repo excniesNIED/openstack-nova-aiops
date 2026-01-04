@@ -9,9 +9,11 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from .db import get_alert, init_db, list_alerts, make_engine
+from .broadcast import AlertBroadcaster
+from .db import append_alert_comment, get_alert, init_db, list_alerts, make_engine, update_alert_status
 from .replay import ReplayController, replay_config_from_env
 from .worker import InferenceWorker, config_from_env
 
@@ -22,6 +24,10 @@ class StartReplayRequest(BaseModel):
     rate: Optional[float] = Field(default=None, ge=0)
     loop: bool = False
     max_records: int = Field(default=0, ge=0)
+
+
+class CommentRequest(BaseModel):
+    comment: str = Field(min_length=1, max_length=1000)
 
 
 def create_app() -> FastAPI:
@@ -40,7 +46,8 @@ def create_app() -> FastAPI:
     init_db(engine)
 
     cfg = config_from_env()
-    worker = InferenceWorker(cfg)
+    broadcaster = AlertBroadcaster()
+    worker = InferenceWorker(cfg, broadcaster=broadcaster)
 
     replay = ReplayController(replay_config_from_env())
 
@@ -135,6 +142,102 @@ def create_app() -> FastAPI:
             "status": r.status,
             "evidence": r.evidence,
         }
+
+    @app.post("/alerts/{alert_id}/ack")
+    def alert_ack(alert_id: str, req: Optional[CommentRequest] = None):
+        if req and req.comment:
+            r = append_alert_comment(engine, alert_id, comment=req.comment, author="user")
+            if r is None:
+                raise HTTPException(status_code=404, detail="alert not found")
+        r2 = update_alert_status(engine, alert_id, status="ack")
+        if r2 is None:
+            raise HTTPException(status_code=404, detail="alert not found")
+        return {"ok": True, "alert_id": alert_id, "status": r2.status}
+
+    @app.post("/alerts/{alert_id}/close")
+    def alert_close(alert_id: str, req: Optional[CommentRequest] = None):
+        if req and req.comment:
+            r = append_alert_comment(engine, alert_id, comment=req.comment, author="user")
+            if r is None:
+                raise HTTPException(status_code=404, detail="alert not found")
+        r2 = update_alert_status(engine, alert_id, status="resolved")
+        if r2 is None:
+            raise HTTPException(status_code=404, detail="alert not found")
+        return {"ok": True, "alert_id": alert_id, "status": r2.status}
+
+    @app.post("/alerts/{alert_id}/comment")
+    def alert_comment(alert_id: str, req: CommentRequest):
+        r = append_alert_comment(engine, alert_id, comment=req.comment, author="user")
+        if r is None:
+            raise HTTPException(status_code=404, detail="alert not found")
+        return {"ok": True, "alert_id": alert_id}
+
+    @app.get("/metrics/overview")
+    def metrics_overview(minutes: int = Query(15, ge=1, le=24 * 60)):
+        from collections import Counter
+        from datetime import datetime, timedelta, timezone
+
+        rows = list_alerts(engine, limit=5000, offset=0, status=None)
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(minutes=int(minutes))
+
+        def parse_dt(s: str):
+            try:
+                return datetime.fromisoformat(s.replace("Z", "+00:00"))
+            except Exception:
+                return None
+
+        selected = []
+        for r in rows:
+            ts = parse_dt(r.created_at)
+            if ts is None or ts < cutoff:
+                continue
+            selected.append(r)
+
+        sev = Counter(r.severity for r in selected)
+        st = Counter(r.status for r in selected)
+        cls = Counter(r.pred_class for r in selected)
+
+        return {
+            "window_minutes": int(minutes),
+            "now": now.replace(microsecond=0).isoformat(),
+            "total": len(selected),
+            "by_severity": dict(sev),
+            "by_status": dict(st),
+            "top_pred_class": [{"pred_class": k, "count": v} for k, v in cls.most_common(10)],
+            "latest_alert_at": selected[0].created_at if selected else None,
+        }
+
+    @app.get("/events/alerts")
+    def alerts_sse():
+        """
+        Server-Sent Events stream for newly created alerts (best-effort).
+        Client should still periodically call /alerts to recover from disconnects.
+        """
+        import json
+        import queue
+        import time
+
+        q = broadcaster.subscribe()
+
+        def gen():
+            try:
+                yield "retry: 3000\n\n"
+                last_ping = time.time()
+                while True:
+                    try:
+                        msg = q.get(timeout=15)
+                        data = json.dumps(msg, ensure_ascii=False)
+                        yield f"event: alert\ndata: {data}\n\n"
+                    except queue.Empty:
+                        # Keep connection alive through proxies.
+                        if (time.time() - last_ping) >= 15:
+                            yield "event: ping\ndata: {}\n\n"
+                            last_ping = time.time()
+            finally:
+                broadcaster.unsubscribe(q)
+
+        return StreamingResponse(gen(), media_type="text/event-stream")
 
     return app
 

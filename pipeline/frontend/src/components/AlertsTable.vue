@@ -103,6 +103,20 @@ const detailSummary = computed(() => {
     topTemplates: templates.slice(0, 10),
   }
 })
+
+const llmDetail = computed(() => {
+  const r = detail.value
+  const llm = (r as any)?.evidence?.llm
+  if (!llm) return null
+  return {
+    summary: String(llm.summary ?? ''),
+    impact: String(llm.impact ?? ''),
+    confidence: typeof llm.confidence === 'number' ? llm.confidence : Number(llm.confidence ?? NaN),
+    suspectedCauses: Array.isArray(llm.suspected_causes) ? llm.suspected_causes.map(String) : [],
+    nextSteps: Array.isArray(llm.next_steps) ? llm.next_steps.map(String) : [],
+    mode: String(llm.mode ?? ''),
+  }
+})
 </script>
 
 <template>
@@ -227,6 +241,53 @@ const detailSummary = computed(() => {
           </h4>
           <pre class="pre">{{ detail?.evidence?.error_examples?.slice(0, 5) ?? [] }}</pre>
         </div>
+
+        <div
+          v-if="llmDetail"
+          class="mt"
+        >
+          <h4 class="sub-title">
+            AI 运维建议（LLM）
+          </h4>
+          <div class="llm-card">
+            <div class="llm-summary">
+              {{ llmDetail.summary || '—' }}
+            </div>
+            <div class="llm-meta mono">
+              <span v-if="Number.isFinite(llmDetail.confidence)">confidence={{ (llmDetail.confidence * 100).toFixed(1) }}%</span>
+              <span v-if="llmDetail.mode">mode={{ llmDetail.mode }}</span>
+              <span v-if="llmDetail.impact">impact={{ llmDetail.impact }}</span>
+            </div>
+            <div class="llm-grid">
+              <div>
+                <div class="llm-title">
+                  可能原因
+                </div>
+                <ul class="llm-list">
+                  <li
+                    v-for="(s, i) in llmDetail.suspectedCauses.slice(0, 6)"
+                    :key="i"
+                  >
+                    {{ s }}
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <div class="llm-title">
+                  下一步建议
+                </div>
+                <ul class="llm-list">
+                  <li
+                    v-for="(s, i) in llmDetail.nextSteps.slice(0, 8)"
+                    :key="i"
+                  >
+                    {{ s }}
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
       </template>
       <template v-else>
         <div class="modal-loading">
@@ -320,5 +381,48 @@ const detailSummary = computed(() => {
   padding: 0.75rem;
   border-radius: 8px;
 }
-</style>
 
+.llm-card {
+  margin-top: 0.5rem;
+  background: rgba(0, 0, 0, 0.14);
+  border: 1px solid rgba(0, 240, 255, 0.22);
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.llm-summary {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.llm-meta {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  color: rgba(0, 240, 255, 0.9);
+  font-size: 0.8rem;
+}
+
+.llm-grid {
+  margin-top: 0.65rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.llm-title {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.4rem;
+}
+
+.llm-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+</style>

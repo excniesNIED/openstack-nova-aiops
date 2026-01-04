@@ -71,3 +71,37 @@ def list_alerts(engine, limit: int = 50, offset: int = 0, status: Optional[str] 
         if status:
             q = q.where(Alert.status == status)
         return list(s.execute(q).scalars().all())
+
+
+def update_alert_status(engine, alert_id: str, *, status: str) -> Optional[Alert]:
+    status = (status or "").strip()
+    if not status:
+        return None
+    with Session(engine) as s:
+        a = s.get(Alert, alert_id)
+        if a is None:
+            return None
+        a.status = status
+        s.add(a)
+        s.commit()
+        s.refresh(a)
+        return a
+
+
+def append_alert_comment(engine, alert_id: str, *, comment: str, author: str = "user") -> Optional[Alert]:
+    c = (comment or "").strip()
+    if not c:
+        return None
+    with Session(engine) as s:
+        a = s.get(Alert, alert_id)
+        if a is None:
+            return None
+        evidence = dict(a.evidence or {})
+        comments = list(evidence.get("comments") or [])
+        comments.append({"ts": utcnow_iso(), "author": author, "comment": c})
+        evidence["comments"] = comments[-50:]
+        a.evidence = evidence
+        s.add(a)
+        s.commit()
+        s.refresh(a)
+        return a

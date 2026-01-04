@@ -49,20 +49,32 @@ docker compose -f pipeline/docker-compose.yml up -d
 docker compose -f pipeline/docker-compose.yml ps
 ```
 
+默认启用 MariaDB（用于告警库）；可选启用 Hadoop(HDFS)：
+
+```bash
+docker compose -f pipeline/docker-compose.yml --profile hadoop up -d
+```
+
+MariaDB 默认配置：
+- host: `localhost:13306`（容器内为 `mariadb:3306`）
+- db/user/password: `aiops/aiops/aiops`
+
 ---
 
 ## 3. 创建 Kafka Topics
 
-默认使用两个 topic：
+默认使用三个 topic：
 - `openstack.raw`
 - `openstack.features`
+- `openstack.alerts`（Worker 推理后“同步广播”的告警流，便于后续扩展）
 
-创建：
+`pipeline/docker-compose.yml` 已内置 `kafka-init`，启动 compose 后会自动创建；也可以手动创建：
 
 ```bash
 docker compose -f pipeline/docker-compose.yml exec kafka bash -lc '
   kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.raw --partitions 3 --replication-factor 1
   kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.features --partitions 3 --replication-factor 1
+  kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.alerts --partitions 3 --replication-factor 1
   kafka-topics --bootstrap-server kafka:9092 --list
 '
 ```
@@ -84,6 +96,24 @@ docker compose -f pipeline/docker-compose.yml exec spark-master bash -lc '
       --features-topic openstack.features \
       --window 60 \
       --slide 30
+'
+```
+
+如果启用了 HDFS（`--profile hadoop`），可把解析后的明细记录与窗口特征落到 HDFS（Parquet）：
+
+```bash
+docker compose -f pipeline/docker-compose.yml exec spark-master bash -lc '
+  spark-submit \
+    --master spark://spark-master:7077 \
+    --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
+    /opt/pipeline/streaming/openstack_streaming_job.py \
+      --bootstrap kafka:9092 \
+      --raw-topic openstack.raw \
+      --features-topic openstack.features \
+      --window 60 \
+      --slide 30 \
+      --hdfs-records-path hdfs://namenode:8020/data/openstack/records \
+      --hdfs-features-path hdfs://namenode:8020/data/openstack/features
 '
 ```
 
@@ -147,12 +177,26 @@ FastAPI 在 compose 中默认暴露 `http://localhost:8000`：
 ```bash
 curl http://localhost:8000/health
 curl "http://localhost:8000/alerts?limit=20"
+curl "http://localhost:8000/metrics/overview?minutes=15"
 ```
 
 查看某条告警详情：
 
 ```bash
 curl "http://localhost:8000/alerts/<alert_id>"
+```
+
+告警闭环（确认/关闭/评论，可用于答辩演示）：
+
+```bash
+curl -X POST "http://localhost:8000/alerts/<alert_id>/ack" -H "Content-Type: application/json" -d '{"comment":"已确认，开始排查"}'
+curl -X POST "http://localhost:8000/alerts/<alert_id>/close" -H "Content-Type: application/json" -d '{"comment":"已恢复，关闭告警"}'
+```
+
+实时推送（SSE，前端已自动订阅；也可用 curl 看连接是否成功）：
+
+```bash
+curl -N "http://localhost:8000/events/alerts"
 ```
 
 ---

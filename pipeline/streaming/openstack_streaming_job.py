@@ -131,6 +131,16 @@ def main() -> None:
     p.add_argument("--window", type=int, default=60, help="Window size seconds")
     p.add_argument("--slide", type=int, default=30, help="Slide size seconds")
     p.add_argument("--checkpoint", default="/opt/checkpoints/openstack_streaming_job")
+    p.add_argument(
+        "--hdfs-records-path",
+        default="",
+        help="Optional: write parsed records to HDFS as Parquet (e.g. hdfs://namenode:8020/data/openstack/records)",
+    )
+    p.add_argument(
+        "--hdfs-features-path",
+        default="",
+        help="Optional: write window features snapshots to HDFS as Parquet (may contain updates per window)",
+    )
     args = p.parse_args()
 
     spark = (
@@ -244,44 +254,86 @@ def main() -> None:
     df_ds = df_records.groupBy(w.alias("w"), "entity_key").agg(F.first("dataset_id").alias("dataset_id"))
     df_join = df_join.join(df_ds, on=["w", "entity_key"], how="left")
 
-    out = df_join.select(
-        F.to_json(
-            F.struct(
-                F.col("entity_key"),
-                F.coalesce(F.col("dataset_id"), F.lit("")).alias("dataset_id"),
-                F.col("window_start").cast("string").alias("window_start"),
-                F.col("window_end").cast("string").alias("window_end"),
-                F.col("template_counts"),
-                F.coalesce(F.col("keyword_counts"), F.create_map()).alias("keyword_counts"),
-                F.coalesce(F.col("error_examples"), F.array()).alias("error_examples"),
-                F.coalesce(F.col("top_templates"), F.array()).alias("top_templates"),
-                F.col("error_cnt"),
-                F.col("warn_cnt"),
-                F.col("info_cnt"),
-                F.col("total_records"),
-                F.col("error_ratio"),
-            )
-        ).alias("value"),
-        F.col("entity_key").alias("key"),
+    df_features = df_join.select(
+        F.col("entity_key"),
+        F.coalesce(F.col("dataset_id"), F.lit("")).alias("dataset_id"),
+        F.col("window_start").alias("window_start"),
+        F.col("window_end").alias("window_end"),
+        F.col("template_counts"),
+        F.coalesce(F.col("keyword_counts"), F.create_map()).alias("keyword_counts"),
+        F.coalesce(F.col("error_examples"), F.array()).alias("error_examples"),
+        F.coalesce(F.col("top_templates"), F.array()).alias("top_templates"),
+        F.coalesce(F.col("error_cnt"), F.lit(0)).alias("error_cnt"),
+        F.coalesce(F.col("warn_cnt"), F.lit(0)).alias("warn_cnt"),
+        F.coalesce(F.col("info_cnt"), F.lit(0)).alias("info_cnt"),
+        F.coalesce(F.col("total_records"), F.lit(0)).alias("total_records"),
+        F.coalesce(F.col("error_ratio"), F.lit(0.0)).alias("error_ratio"),
     )
 
-    def _write_batch_to_kafka(batch_df, batch_id: int) -> None:
+    def _write_features_batch(batch_df, batch_id: int) -> None:
+        kafka_df = batch_df.select(
+            F.col("entity_key").cast("string").alias("key"),
+            F.to_json(
+                F.struct(
+                    F.col("entity_key"),
+                    F.col("dataset_id"),
+                    F.col("window_start").cast("string").alias("window_start"),
+                    F.col("window_end").cast("string").alias("window_end"),
+                    F.col("template_counts"),
+                    F.col("keyword_counts"),
+                    F.col("error_examples"),
+                    F.col("top_templates"),
+                    F.col("error_cnt"),
+                    F.col("warn_cnt"),
+                    F.col("info_cnt"),
+                    F.col("total_records"),
+                    F.col("error_ratio"),
+                )
+            ).alias("value"),
+        )
         (
-            batch_df.select(F.col("key").cast("string").alias("key"), F.col("value").cast("string").alias("value"))
-            .write.format("kafka")
+            kafka_df.write.format("kafka")
             .option("kafka.bootstrap.servers", args.bootstrap)
             .option("topic", args.features_topic)
             .save()
         )
 
-    query = (
-        out.writeStream.outputMode("update")
-        .foreachBatch(_write_batch_to_kafka)
+        if args.hdfs_features_path:
+            (
+                batch_df.withColumn("batch_id", F.lit(int(batch_id)))
+                .withColumn("dt", F.date_format(F.col("window_start"), "yyyy-MM-dd"))
+                .write.mode("append")
+                .partitionBy("dt", "dataset_id")
+                .parquet(args.hdfs_features_path)
+            )
+
+    def _write_records_batch(batch_df, batch_id: int) -> None:
+        if not args.hdfs_records_path:
+            return
+        (
+            batch_df.withColumn("batch_id", F.lit(int(batch_id)))
+            .withColumn("dt", F.date_format(F.col("event_ts"), "yyyy-MM-dd"))
+            .write.mode("append")
+            .partitionBy("dt", "dataset_id")
+            .parquet(args.hdfs_records_path)
+        )
+
+    _ = (
+        df_features.writeStream.outputMode("update")
+        .foreachBatch(_write_features_batch)
         .option("checkpointLocation", args.checkpoint)
         .start()
     )
 
-    query.awaitTermination()
+    if args.hdfs_records_path:
+        _ = (
+            df_records.writeStream.outputMode("append")
+            .foreachBatch(_write_records_batch)
+            .option("checkpointLocation", f"{args.checkpoint}/records")
+            .start()
+        )
+
+    spark.streams.awaitAnyTermination()
 
 
 if __name__ == "__main__":
