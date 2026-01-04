@@ -90,6 +90,8 @@ VITE_API_PROXY_TARGET=http://localhost:8000 bun run dev
 - 推荐：`/api`（走代理）
 - 或直接写：`http://<host>:8000`（直连，后端已开启 CORS）
 
+> 注意：`bun run preview` 只会静态托管 `dist/`，不会包含 Vite dev proxy；此时请使用直连 `http://localhost:8000`（或自行在 Nginx/网关配置 `/api` 反向代理）。
+
 ### 生产构建
 
 ```bash

@@ -36,7 +36,7 @@ const donutConfig = ref({
               bold: true,
               fontSize: 24,
               color: '#00f0ff',
-              text: '资源',
+              text: '告警',
               offsetY: -10,
               value: {
                 show: true,
