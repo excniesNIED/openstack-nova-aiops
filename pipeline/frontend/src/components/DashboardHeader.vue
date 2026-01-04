@@ -19,13 +19,8 @@ const statusText = () => {
   <header class="dashboard-header">
     <div class="header-left">
       <div class="logo-container">
-        <div class="logo-icon">
-          <svg viewBox="0 0 100 100" class="logo-svg">
-            <polygon points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5" fill="none" stroke="currentColor" stroke-width="2"/>
-            <polygon points="50,20 80,35 80,65 50,80 20,65 20,35" fill="none" stroke="currentColor" stroke-width="1.5"/>
-            <circle cx="50" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="2"/>
-            <circle cx="50" cy="50" r="5" fill="currentColor"/>
-          </svg>
+        <div class="logo-icon" aria-hidden="true">
+          <img class="logo-img" src="/logo.svg" alt="" />
         </div>
         <div class="logo-text">
           <h1>OPENSTACK</h1>
@@ -106,19 +101,19 @@ const statusText = () => {
 .logo-icon {
   width: 50px;
   height: 50px;
-  color: var(--primary-color);
-  animation: logoRotate 10s linear infinite;
+  animation: logoFloat 6s ease-in-out infinite;
 }
 
-.logo-svg {
+.logo-img {
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 10px var(--primary-color));
+  display: block;
+  filter: drop-shadow(0 0 12px rgba(0, 240, 255, 0.35));
 }
 
-@keyframes logoRotate {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+@keyframes logoFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
 .logo-text h1 {

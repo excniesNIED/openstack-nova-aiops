@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { getControlStatus } from './api/pipeline'
 import DashboardHeader from './components/DashboardHeader.vue'
 import StatsCard from './components/StatsCard.vue'
 import RadarChart from './components/RadarChart.vue'
@@ -9,6 +10,7 @@ import GaugePanel from './components/GaugePanel.vue'
 import ActivityLog from './components/ActivityLog.vue'
 import SystemStatus from './components/SystemStatus.vue'
 import AlertsTable from './components/AlertsTable.vue'
+import WelcomeScreen from './components/WelcomeScreen.vue'
 import { useApiBaseUrl } from './composables/useApiBaseUrl'
 import { usePipelineAlerts } from './composables/usePipelineAlerts'
 
@@ -20,6 +22,8 @@ const { alerts, loading, error, apiOk, apiLatencyMs, lastUpdatedIso, refresh } =
   pollMs: 3000,
   limit: 200,
 })
+
+const entered = ref(false)
 
 const settingsOpen = ref(false)
 const apiBaseUrlDraft = ref(apiBaseUrl.value)
@@ -144,6 +148,16 @@ onMounted(() => {
   timeInterval = window.setInterval(() => {
     currentTime.value = new Date().toLocaleTimeString()
   }, 1000)
+
+  void (async () => {
+    try {
+      const st = await getControlStatus(apiBaseUrl.value, { timeoutMs: 5000 })
+      if (st?.running) entered.value = true
+    } catch {
+      // If control API is unavailable, fall back to directly showing the dashboard.
+      entered.value = true
+    }
+  })()
 })
 
 onUnmounted(() => {
@@ -153,16 +167,19 @@ onUnmounted(() => {
 
 <template>
   <div class="dashboard">
-    <DashboardHeader
-      :current-time="currentTime"
-      :api-base-url="apiBaseUrl"
-      :api-ok="apiOk"
-      :api-latency-ms="apiLatencyMs"
-      :alerts-count="alerts.length"
-      :on-open-settings="openSettings"
-    />
-    
-    <main class="dashboard-content">
+    <WelcomeScreen v-if="!entered" :api-base-url="apiBaseUrl" :on-open-settings="openSettings" @entered="entered = true" />
+
+    <template v-else>
+      <DashboardHeader
+        :current-time="currentTime"
+        :api-base-url="apiBaseUrl"
+        :api-ok="apiOk"
+        :api-latency-ms="apiLatencyMs"
+        :alerts-count="alerts.length"
+        :on-open-settings="openSettings"
+      />
+
+      <main class="dashboard-content">
       <!-- Stats Row -->
       <section class="stats-row">
         <StatsCard
@@ -220,7 +237,8 @@ onUnmounted(() => {
           :error="error"
         />
       </section>
-    </main>
+      </main>
+    </template>
 
     <d-modal v-model="settingsOpen" title="API 设置" :close-on-click-overlay="true">
       <div class="settings">

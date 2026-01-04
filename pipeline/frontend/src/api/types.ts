@@ -35,5 +35,26 @@ export type Alert = {
 
 export type HealthResponse = {
   ok: boolean
+  replay_running?: boolean
 }
 
+export type ControlStatus = {
+  running: boolean
+  dataset_id: string
+  log_path: string | null
+  rate: number
+  loop: boolean
+  max_records: number
+  sent_records: number
+  started_at: string | null
+  finished_at: string | null
+  last_error: string | null
+}
+
+export type StartReplayRequest = {
+  dataset_id: string
+  log_name?: string
+  rate?: number
+  loop?: boolean
+  max_records?: number
+}
