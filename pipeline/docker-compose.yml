@@ -65,10 +65,14 @@ services:
     environment:
       APP_KAFKA_BOOTSTRAP: "kafka:9092"
       APP_KAFKA_FEATURES_TOPIC: "openstack.features"
+      APP_KAFKA_RAW_TOPIC: "openstack.raw"
       APP_DB_URL: "sqlite:////data/alerts.db"
       APP_MODEL_DIR: "/models"
       APP_ALERT_THRESHOLD: "0.7"
+      APP_REPLAY_LOG_DIR: "/opt/workspace"
+      APP_REPLAY_RATE: "80"
     volumes:
+      - "../:/opt/workspace:ro"
       - "../label&train/output/artifacts:/models:ro"
       - alerts-db:/data
       - ./service:/app:ro

@@ -228,11 +228,12 @@ class ReplayController:
 
 
 def replay_config_from_env() -> ReplayConfig:
-    allowed_dir = Path(os.environ.get("APP_REPLAY_LOG_DIR", "/opt/workspace"))
+    explicit = os.environ.get("APP_REPLAY_LOG_DIR")
+    candidates = [Path(explicit)] if explicit else [Path("/opt/workspace"), Path.cwd(), Path.cwd().parent]
+    allowed_dir = next((p for p in candidates if p.exists() and p.is_dir() and any(p.glob("*.log"))), candidates[0])
     return ReplayConfig(
         kafka_bootstrap=os.environ.get("APP_KAFKA_BOOTSTRAP", "kafka:9092"),
         raw_topic=os.environ.get("APP_KAFKA_RAW_TOPIC", "openstack.raw"),
         allowed_log_dir=allowed_dir,
         default_rate=float(os.environ.get("APP_REPLAY_RATE", "50")),
     )
-

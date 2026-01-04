@@ -9,6 +9,26 @@
   --text-primary: #e0e0ff;
   --text-secondary: #8888aa;
   --gradient-cyber: linear-gradient(135deg, #00f0ff 0%, #ff00ff 50%, #00ff88 100%);
+
+  /* vue-devui theme overrides (dark neon) */
+  --devui-global-bg: var(--bg-dark);
+  --devui-base-bg: rgba(10, 20, 40, 0.92);
+  --devui-area-bg: rgba(10, 20, 40, 0.92);
+  --devui-text: var(--text-primary);
+  --devui-text-weak: var(--text-secondary);
+  --devui-placeholder: rgba(224, 224, 255, 0.35);
+  --devui-line: rgba(0, 240, 255, 0.18);
+  --devui-dividing-line: rgba(0, 240, 255, 0.14);
+  --devui-shadow: rgba(0, 0, 0, 0.35);
+  --devui-brand: var(--primary-color);
+  --devui-brand-active: var(--primary-color);
+  --devui-brand-hover: rgba(0, 240, 255, 0.8);
+  --devui-list-item-hover-bg: rgba(0, 240, 255, 0.08);
+  --devui-list-item-hover-text: var(--text-primary);
+  --devui-form-control-line-active: var(--primary-color);
+  --devui-danger: #ff4444;
+  --devui-warning: #ffaa00;
+  --devui-success: var(--accent-color);
 }
 
 * {
