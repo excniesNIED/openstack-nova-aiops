@@ -19,8 +19,15 @@ const statusText = () => {
   <header class="dashboard-header">
     <div class="header-left">
       <div class="logo-container">
-        <div class="logo-icon" aria-hidden="true">
-          <img class="logo-img" src="/logo.svg" alt="" />
+        <div
+          class="logo-icon"
+          aria-hidden="true"
+        >
+          <img
+            class="logo-img"
+            src="/logo.svg"
+            alt=""
+          >
         </div>
         <div class="logo-text">
           <h1>OPENSTACK</h1>
@@ -31,16 +38,19 @@ const statusText = () => {
 
     <div class="header-center">
       <div class="status-bar">
-        <div class="status-item" :class="{ online: props.apiOk === true }">
-          <span class="status-dot"></span>
+        <div
+          class="status-item"
+          :class="{ online: props.apiOk === true }"
+        >
+          <span class="status-dot" />
           <span>{{ statusText() }}</span>
         </div>
-        <div class="divider"></div>
+        <div class="divider" />
         <div class="status-item">
           <span>延迟: </span>
           <span class="highlight">{{ props.apiLatencyMs == null ? '--' : `${props.apiLatencyMs}ms` }}</span>
         </div>
-        <div class="divider"></div>
+        <div class="divider" />
         <div class="status-item">
           <span>告警数: </span>
           <span class="highlight">{{ props.alertsCount }}</span>
@@ -50,11 +60,19 @@ const statusText = () => {
 
     <div class="header-right">
       <div class="time-display">
-        <div class="time-label">系统时间</div>
-        <div class="time-value">{{ currentTime }}</div>
+        <div class="time-label">
+          系统时间
+        </div>
+        <div class="time-value">
+          {{ currentTime }}
+        </div>
       </div>
-      <d-button variant="outline" class="header-btn" @click="props.onOpenSettings?.()">
-        <i class="icon icon-setting"></i>
+      <d-button
+        variant="outline"
+        class="header-btn"
+        @click="props.onOpenSettings?.()"
+      >
+        <i class="icon icon-setting" />
       </d-button>
     </div>
   </header>

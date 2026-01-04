@@ -74,7 +74,10 @@ const xyDataset = computed(() =>
 
 <template>
   <div class="line-chart">
-    <VueUiXy :config="xyConfig" :dataset="xyDataset" />
+    <VueUiXy
+      :config="xyConfig"
+      :dataset="xyDataset"
+    />
   </div>
 </template>
 

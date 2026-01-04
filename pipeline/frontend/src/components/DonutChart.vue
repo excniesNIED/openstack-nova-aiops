@@ -100,10 +100,20 @@ const donutDataset = computed(() =>
 
 <template>
   <div class="donut-chart">
-    <VueUiDonut :config="donutConfig" :dataset="donutDataset" />
+    <VueUiDonut
+      :config="donutConfig"
+      :dataset="donutDataset"
+    />
     <div class="legend">
-      <div v-for="it in props.items" :key="it.name" class="legend-item">
-        <span class="dot" :style="{ background: it.color }"></span>
+      <div
+        v-for="it in props.items"
+        :key="it.name"
+        class="legend-item"
+      >
+        <span
+          class="dot"
+          :style="{ background: it.color }"
+        />
         <span class="name">{{ it.name }}</span>
         <span class="value mono">{{ it.value }}</span>
       </div>

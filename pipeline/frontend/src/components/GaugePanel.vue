@@ -59,9 +59,15 @@ const createGaugeConfig = (color: string) => ({
 
 <template>
   <div class="gauge-panel">
-    <h3 class="panel-title">{{ props.title ?? '系统指标' }}</h3>
+    <h3 class="panel-title">
+      {{ props.title ?? '系统指标' }}
+    </h3>
     <div class="gauges-grid">
-      <div v-for="gauge in props.gauges" :key="gauge.name" class="gauge-item">
+      <div
+        v-for="gauge in props.gauges"
+        :key="gauge.name"
+        class="gauge-item"
+      >
         <VueUiGauge 
           :config="createGaugeConfig(gauge.color)" 
           :dataset="{
@@ -73,7 +79,10 @@ const createGaugeConfig = (color: string) => ({
             ],
           }" 
         />
-        <span class="gauge-label" :style="{ color: gauge.color }">{{ gauge.name }}</span>
+        <span
+          class="gauge-label"
+          :style="{ color: gauge.color }"
+        >{{ gauge.name }}</span>
       </div>
     </div>
   </div>

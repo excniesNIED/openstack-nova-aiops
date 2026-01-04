@@ -6,9 +6,9 @@ const props = withDefaults(
     title?: string
     categories: string[]
     current: number[]
-    baseline?: number[]
+    baseline?: number[] | null
   }>(),
-  { title: '告警证据画像' },
+  { title: '告警证据画像', baseline: null },
 )
 
 const radarConfig = ref({
@@ -76,14 +76,17 @@ const radarDataset = computed(() => ({
   categories: props.categories.map((name) => ({ name })),
   series: [
     { name: '当前窗口', values: props.current, color: '#00f0ff' },
-    ...(props.baseline ? [{ name: '基线', values: props.baseline, color: '#ff00ff' }] : []),
+    ...(props.baseline && props.baseline.length ? [{ name: '基线', values: props.baseline, color: '#ff00ff' }] : []),
   ],
 }))
 </script>
 
 <template>
   <div class="radar-chart">
-    <VueUiRadar :config="radarConfig" :dataset="radarDataset" />
+    <VueUiRadar
+      :config="radarConfig"
+      :dataset="radarDataset"
+    />
   </div>
 </template>
 

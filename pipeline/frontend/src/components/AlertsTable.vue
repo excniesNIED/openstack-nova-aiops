@@ -108,11 +108,32 @@ const detailSummary = computed(() => {
 <template>
   <div class="alerts-table">
     <div class="table-header">
-      <h3 class="panel-title">告警列表（来自 FastAPI）</h3>
+      <h3 class="panel-title">
+        告警列表（来自 FastAPI）
+      </h3>
       <div class="table-meta">
-        <d-tag v-if="props.loading" type="primary" size="sm">拉取中…</d-tag>
-        <d-tag v-else-if="props.error" type="danger" size="sm" :title-content="props.error">API 异常</d-tag>
-        <d-tag v-else type="success" size="sm">已连接</d-tag>
+        <d-tag
+          v-if="props.loading"
+          type="primary"
+          size="sm"
+        >
+          拉取中…
+        </d-tag>
+        <d-tag
+          v-else-if="props.error"
+          type="danger"
+          size="sm"
+          :title-content="props.error"
+        >
+          API 异常
+        </d-tag>
+        <d-tag
+          v-else
+          type="success"
+          size="sm"
+        >
+          已连接
+        </d-tag>
         <span class="meta-text mono">limit={{ props.alerts.length }}</span>
       </div>
     </div>
@@ -125,21 +146,63 @@ const detailSummary = computed(() => {
       :row-hovered-highlight="true"
       empty="暂无告警（或尚未启动回放/流式任务）"
     >
-      <d-column header="时间" :width="170" :formatter="timeFormatter" />
-      <d-column field="severity" header="等级" :width="80" :formatter="severityFormatter" />
-      <d-column field="pred_class" header="类型" :width="160" show-overflow-tooltip />
-      <d-column field="entity_key" header="实体" :width="220" show-overflow-tooltip />
-      <d-column field="prob" header="置信度" :width="110" :formatter="probFormatter" />
-      <d-column header="操作" :width="90" :formatter="actionFormatter" />
+      <d-column
+        header="时间"
+        :width="170"
+        :formatter="timeFormatter"
+      />
+      <d-column
+        field="severity"
+        header="等级"
+        :width="80"
+        :formatter="severityFormatter"
+      />
+      <d-column
+        field="pred_class"
+        header="类型"
+        :width="160"
+        show-overflow-tooltip
+      />
+      <d-column
+        field="entity_key"
+        header="实体"
+        :width="220"
+        show-overflow-tooltip
+      />
+      <d-column
+        field="prob"
+        header="置信度"
+        :width="110"
+        :formatter="probFormatter"
+      />
+      <d-column
+        header="操作"
+        :width="90"
+        :formatter="actionFormatter"
+      />
     </d-table>
 
-    <d-modal v-model="modalVisible" title="告警详情" :close-on-click-overlay="true">
+    <d-modal
+      v-model="modalVisible"
+      title="告警详情"
+      :close-on-click-overlay="true"
+    >
       <template v-if="detailLoading">
-        <div class="modal-loading">加载中…</div>
+        <div class="modal-loading">
+          加载中…
+        </div>
       </template>
       <template v-else-if="detailError">
-        <d-tag type="danger" size="sm" :title-content="detailError">加载失败</d-tag>
-        <div class="mono mt">{{ detailError }}</div>
+        <d-tag
+          type="danger"
+          size="sm"
+          :title-content="detailError"
+        >
+          加载失败
+        </d-tag>
+        <div class="mono mt">
+          {{ detailError }}
+        </div>
       </template>
       <template v-else-if="detailSummary">
         <div class="detail-grid">
@@ -149,7 +212,9 @@ const detailSummary = computed(() => {
           <div><span class="label">置信度</span><span class="mono">{{ detailSummary.probPct }}</span></div>
           <div><span class="label">实体</span><span class="mono">{{ detailSummary.entityKey }}</span></div>
           <div><span class="label">ERROR%</span><span class="mono">{{ detailSummary.errorRatioPct }}</span></div>
-          <div class="span-2"><span class="label">计数</span><span class="mono">{{ detailSummary.countsText }}</span></div>
+          <div class="span-2">
+            <span class="label">计数</span><span class="mono">{{ detailSummary.countsText }}</span>
+          </div>
           <div class="span-2">
             <span class="label">Top Templates</span>
             <span class="mono">{{ detailSummary.topTemplates.join(', ') || '--' }}</span>
@@ -157,12 +222,16 @@ const detailSummary = computed(() => {
         </div>
 
         <div class="mt">
-          <h4 class="sub-title">ERROR 证据（error_examples）</h4>
+          <h4 class="sub-title">
+            ERROR 证据（error_examples）
+          </h4>
           <pre class="pre">{{ detail?.evidence?.error_examples?.slice(0, 5) ?? [] }}</pre>
         </div>
       </template>
       <template v-else>
-        <div class="modal-loading">未选择告警</div>
+        <div class="modal-loading">
+          未选择告警
+        </div>
       </template>
     </d-modal>
   </div>

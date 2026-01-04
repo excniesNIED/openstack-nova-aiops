@@ -108,14 +108,26 @@ onMounted(async () => {
   <div class="welcome">
     <div class="topbar">
       <div class="brand">
-        <img class="brand-logo" src="/logo.svg" alt="logo" />
+        <img
+          class="brand-logo"
+          src="/logo.svg"
+          alt="logo"
+        >
         <div class="brand-text">
-          <div class="title">OpenStack AIOps Pipeline</div>
-          <div class="subtitle">点击开始后，后端回放日志 → Kafka → Spark → 在线推理 → 告警看板</div>
+          <div class="title">
+            OpenStack AIOps Pipeline
+          </div>
+          <div class="subtitle">
+            点击开始后，后端回放日志 → Kafka → Spark → 在线推理 → 告警看板
+          </div>
         </div>
       </div>
-      <d-button variant="outline" class="settings-btn" @click="props.onOpenSettings?.()">
-        <i class="icon icon-setting"></i>
+      <d-button
+        variant="outline"
+        class="settings-btn"
+        @click="props.onOpenSettings?.()"
+      >
+        <i class="icon icon-setting" />
         API 设置
       </d-button>
     </div>
@@ -123,17 +135,40 @@ onMounted(async () => {
     <div class="grid">
       <div class="panel cyber-card">
         <div class="panel-header">
-          <h2 class="panel-title">启动回放</h2>
+          <h2 class="panel-title">
+            启动回放
+          </h2>
           <div class="panel-meta">
-            <d-tag v-if="running" type="success" size="sm">回放运行中</d-tag>
-            <d-tag v-else type="primary" size="sm">未启动</d-tag>
-            <d-button size="sm" variant="text" :loading="statusLoading" @click="refresh">刷新</d-button>
+            <d-tag
+              v-if="running"
+              type="success"
+              size="sm"
+            >
+              回放运行中
+            </d-tag>
+            <d-tag
+              v-else
+              type="primary"
+              size="sm"
+            >
+              未启动
+            </d-tag>
+            <d-button
+              size="sm"
+              variant="text"
+              :loading="statusLoading"
+              @click="refresh"
+            >
+              刷新
+            </d-button>
           </div>
         </div>
 
         <div class="form">
           <div class="row">
-            <div class="label">数据集</div>
+            <div class="label">
+              数据集
+            </div>
             <d-select
               :model-value="datasetId"
               style="width: 100%"
@@ -143,7 +178,9 @@ onMounted(async () => {
           </div>
 
           <div class="row">
-            <div class="label">日志文件</div>
+            <div class="label">
+              日志文件
+            </div>
             <d-select
               v-if="Object.keys(logs).length"
               v-model="logName"
@@ -151,19 +188,33 @@ onMounted(async () => {
               :loading="logsLoading"
               :options="Object.keys(logs).map((k) => ({ label: k, value: k }))"
             />
-            <d-input v-else v-model="logName" placeholder="例如 openstack-nova-sample.log" />
+            <d-input
+              v-else
+              v-model="logName"
+              placeholder="例如 openstack-nova-sample.log"
+            />
           </div>
 
           <div class="row">
-            <div class="label">速率</div>
+            <div class="label">
+              速率
+            </div>
             <div class="inline">
-              <d-input-number v-model="rate" :min="0" :max="2000" :step="10" style="width: 160px" />
+              <d-input-number
+                v-model="rate"
+                :min="0"
+                :max="2000"
+                :step="10"
+                style="width: 160px"
+              />
               <span class="hint mono">records/s（0=尽快回放）</span>
             </div>
           </div>
 
           <div class="row">
-            <div class="label">循环</div>
+            <div class="label">
+              循环
+            </div>
             <div class="inline">
               <d-switch v-model="loop" />
               <span class="hint">结束后从头回放</span>
@@ -171,17 +222,35 @@ onMounted(async () => {
           </div>
 
           <div class="row">
-            <div class="label">上限</div>
+            <div class="label">
+              上限
+            </div>
             <div class="inline">
-              <d-input-number v-model="maxRecords" :min="0" :max="2000000" :step="1000" style="width: 160px" />
+              <d-input-number
+                v-model="maxRecords"
+                :min="0"
+                :max="2000000"
+                :step="1000"
+                style="width: 160px"
+              />
               <span class="hint mono">0=不限制</span>
             </div>
           </div>
         </div>
 
-        <div v-if="statusError || lastError" class="error">
-          <d-tag type="danger" size="sm">启动失败</d-tag>
-          <div class="mono">{{ statusError || lastError }}</div>
+        <div
+          v-if="statusError || lastError"
+          class="error"
+        >
+          <d-tag
+            type="danger"
+            size="sm"
+          >
+            启动失败
+          </d-tag>
+          <div class="mono">
+            {{ statusError || lastError }}
+          </div>
         </div>
 
         <div class="actions">
@@ -195,29 +264,56 @@ onMounted(async () => {
           >
             开始
           </d-button>
-          <d-button variant="outline" size="lg" :loading="stopping" :disabled="!running" @click="stopNow">停止</d-button>
-          <d-button variant="text" size="lg" :disabled="!running" @click="emit('entered')">进入看板</d-button>
+          <d-button
+            variant="outline"
+            size="lg"
+            :loading="stopping"
+            :disabled="!running"
+            @click="stopNow"
+          >
+            停止
+          </d-button>
+          <d-button
+            variant="text"
+            size="lg"
+            :disabled="!running"
+            @click="emit('entered')"
+          >
+            进入看板
+          </d-button>
         </div>
       </div>
 
       <div class="panel cyber-card">
         <div class="panel-header">
-          <h2 class="panel-title">运行状态</h2>
+          <h2 class="panel-title">
+            运行状态
+          </h2>
         </div>
 
         <div class="status">
-          <div class="kv"><span class="k">API Base</span><span class="v mono">{{ props.apiBaseUrl || '/api' }}</span></div>
-          <div class="kv"><span class="k">回放进度</span><span class="v mono">{{ status?.sent_records ?? 0 }}</span></div>
+          <div class="kv">
+            <span class="k">API Base</span><span class="v mono">{{ props.apiBaseUrl || '/api' }}</span>
+          </div>
+          <div class="kv">
+            <span class="k">回放进度</span><span class="v mono">{{ status?.sent_records ?? 0 }}</span>
+          </div>
           <div class="kv">
             <span class="k">日志</span>
             <span class="v mono">{{ status?.log_path ?? '—' }}</span>
           </div>
-          <div class="kv"><span class="k">开始时间</span><span class="v mono">{{ status?.started_at ?? '—' }}</span></div>
-          <div class="kv"><span class="k">结束时间</span><span class="v mono">{{ status?.finished_at ?? '—' }}</span></div>
+          <div class="kv">
+            <span class="k">开始时间</span><span class="v mono">{{ status?.started_at ?? '—' }}</span>
+          </div>
+          <div class="kv">
+            <span class="k">结束时间</span><span class="v mono">{{ status?.finished_at ?? '—' }}</span>
+          </div>
         </div>
 
         <div class="tips">
-          <div class="tip-title">提示</div>
+          <div class="tip-title">
+            提示
+          </div>
           <ul>
             <li>需要先启动 Spark Streaming（raw→features），否则不会产生告警。</li>
             <li>回放只是写入 Kafka：`openstack.raw`，推理告警来自 `openstack.features`。</li>

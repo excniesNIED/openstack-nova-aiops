@@ -21,33 +21,58 @@ const isPositive = computed(() => props.change.startsWith('+'))
 </script>
 
 <template>
-  <div class="stats-card" :style="{ '--card-color': cardColor }">
-    <div class="card-glow"></div>
+  <div
+    class="stats-card"
+    :style="{ '--card-color': cardColor }"
+  >
+    <div class="card-glow" />
     <div class="card-content">
       <div class="card-icon">
         <div class="icon-ring">
-          <svg viewBox="0 0 60 60" class="ring-svg">
-            <circle cx="30" cy="30" r="28" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/>
-            <circle cx="30" cy="30" r="28" fill="none" stroke="currentColor" stroke-width="2" 
-              stroke-dasharray="40 136" class="ring-progress"/>
+          <svg
+            viewBox="0 0 60 60"
+            class="ring-svg"
+          >
+            <circle
+              cx="30"
+              cy="30"
+              r="28"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1"
+              opacity="0.3"
+            />
+            <circle
+              cx="30"
+              cy="30"
+              r="28"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2" 
+              stroke-dasharray="40 136"
+              class="ring-progress"
+            />
           </svg>
           <div class="icon-inner">
-            <i :class="icon"></i>
+            <i :class="icon" />
           </div>
         </div>
       </div>
       <div class="card-info">
         <span class="card-title">{{ title }}</span>
         <span class="card-value">{{ value }}</span>
-        <span class="card-change" :class="{ positive: isPositive, negative: !isPositive }">
+        <span
+          class="card-change"
+          :class="{ positive: isPositive, negative: !isPositive }"
+        >
           <span class="change-icon">{{ isPositive ? '↑' : '↓' }}</span>
           {{ change }}
         </span>
       </div>
     </div>
     <div class="card-decoration">
-      <div class="deco-line"></div>
-      <div class="deco-dot"></div>
+      <div class="deco-line" />
+      <div class="deco-dot" />
     </div>
   </div>
 </template>

@@ -167,7 +167,12 @@ onUnmounted(() => {
 
 <template>
   <div class="dashboard">
-    <WelcomeScreen v-if="!entered" :api-base-url="apiBaseUrl" :on-open-settings="openSettings" @entered="entered = true" />
+    <WelcomeScreen
+      v-if="!entered"
+      :api-base-url="apiBaseUrl"
+      :on-open-settings="openSettings"
+      @entered="entered = true"
+    />
 
     <template v-else>
       <DashboardHeader
@@ -180,78 +185,124 @@ onUnmounted(() => {
       />
 
       <main class="dashboard-content">
-      <!-- Stats Row -->
-      <section class="stats-row">
-        <StatsCard
-          v-for="c in kpiCards"
-          :key="c.title"
-          :title="c.title"
-          :value="c.value"
-          :change="c.change"
-          :icon="c.icon"
-          :color="c.color"
-        />
-      </section>
+        <!-- Stats Row -->
+        <section class="stats-row">
+          <StatsCard
+            v-for="c in kpiCards"
+            :key="c.title"
+            :title="c.title"
+            :value="c.value"
+            :change="c.change"
+            :icon="c.icon"
+            :color="c.color"
+          />
+        </section>
 
-      <!-- Main Charts Row -->
-      <section class="charts-row">
-        <div class="chart-container large">
-          <LineChart :labels="trend.labels" :series="trend.series" />
-        </div>
-        <div class="chart-container">
-          <RadarChart :categories="radar.categories" :current="radar.current" :baseline="radar.baseline" />
-        </div>
-      </section>
-
-      <!-- Bottom Row -->
-      <section class="bottom-row">
-        <div class="chart-container">
-          <DonutChart :items="donutItems" />
-        </div>
-        <div class="chart-container">
-          <GaugePanel title="系统健康" :gauges="gauges" />
-        </div>
-        <div class="chart-container">
-          <ActivityLog :alerts="alerts" />
-        </div>
-      </section>
-
-      <!-- Alerts Table -->
-      <section class="alerts-row">
-        <div class="chart-container">
-          <div class="alerts-actions">
-            <d-button size="sm" variant="outline" :loading="loading" @click="refresh">手动刷新</d-button>
-            <d-button size="sm" variant="text" @click="openSettings">API 设置</d-button>
+        <!-- Main Charts Row -->
+        <section class="charts-row">
+          <div class="chart-container large">
+            <LineChart
+              :labels="trend.labels"
+              :series="trend.series"
+            />
           </div>
-          <AlertsTable :alerts="alerts" :api-base-url="apiBaseUrl" :loading="loading" :error="error" />
-        </div>
-      </section>
+          <div class="chart-container">
+            <RadarChart
+              :categories="radar.categories"
+              :current="radar.current"
+              :baseline="radar.baseline"
+            />
+          </div>
+        </section>
 
-      <!-- System Status -->
-      <section class="status-row">
-        <SystemStatus
-          :api-base-url="apiBaseUrl"
-          :api-ok="apiOk"
-          :api-latency-ms="apiLatencyMs"
-          :last-updated-iso="lastUpdatedIso"
-          :error="error"
-        />
-      </section>
+        <!-- Bottom Row -->
+        <section class="bottom-row">
+          <div class="chart-container">
+            <DonutChart :items="donutItems" />
+          </div>
+          <div class="chart-container">
+            <GaugePanel
+              title="系统健康"
+              :gauges="gauges"
+            />
+          </div>
+          <div class="chart-container">
+            <ActivityLog :alerts="alerts" />
+          </div>
+        </section>
+
+        <!-- Alerts Table -->
+        <section class="alerts-row">
+          <div class="chart-container">
+            <div class="alerts-actions">
+              <d-button
+                size="sm"
+                variant="outline"
+                :loading="loading"
+                @click="refresh"
+              >
+                手动刷新
+              </d-button>
+              <d-button
+                size="sm"
+                variant="text"
+                @click="openSettings"
+              >
+                API 设置
+              </d-button>
+            </div>
+            <AlertsTable
+              :alerts="alerts"
+              :api-base-url="apiBaseUrl"
+              :loading="loading"
+              :error="error"
+            />
+          </div>
+        </section>
+
+        <!-- System Status -->
+        <section class="status-row">
+          <SystemStatus
+            :api-base-url="apiBaseUrl"
+            :api-ok="apiOk"
+            :api-latency-ms="apiLatencyMs"
+            :last-updated-iso="lastUpdatedIso"
+            :error="error"
+          />
+        </section>
       </main>
     </template>
 
-    <d-modal v-model="settingsOpen" title="API 设置" :close-on-click-overlay="true">
+    <d-modal
+      v-model="settingsOpen"
+      title="API 设置"
+      :close-on-click-overlay="true"
+    >
       <div class="settings">
         <div class="settings-row">
           <span class="label">API Base URL</span>
-          <d-input v-model="apiBaseUrlDraft" placeholder="/api 或 http://localhost:8000" />
+          <d-input
+            v-model="apiBaseUrlDraft"
+            placeholder="/api 或 http://localhost:8000"
+          />
         </div>
         <div class="settings-hint">
           默认使用 Vite 代理：<span class="mono">/api</span> → <span class="mono">http://localhost:8000</span>
         </div>
         <div class="settings-actions">
-          <d-button variant="outline" @click="settingsOpen = false">取消</d-button>
-          <d-button color="primary" variant="solid" @click="saveSettings">保存</d-button>
+          <d-button
+            variant="outline"
+            @click="settingsOpen = false"
+          >
+            取消
+          </d-button>
+          <d-button
+            color="primary"
+            variant="solid"
+            @click="saveSettings"
+          >
+            保存
+          </d-button>
         </div>
       </div>
     </d-modal>

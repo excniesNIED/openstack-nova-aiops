@@ -42,7 +42,9 @@ const getTypeIcon = (type: string) => {
 
 <template>
   <div class="activity-log">
-    <h3 class="panel-title">最新告警（活动流）</h3>
+    <h3 class="panel-title">
+      最新告警（活动流）
+    </h3>
     <div class="log-list">
       <TransitionGroup name="log">
         <div 
@@ -56,7 +58,12 @@ const getTypeIcon = (type: string) => {
           <span class="log-message">{{ log.message }}</span>
         </div>
       </TransitionGroup>
-      <div v-if="logs.length === 0" class="empty">暂无告警</div>
+      <div
+        v-if="logs.length === 0"
+        class="empty"
+      >
+        暂无告警
+      </div>
     </div>
   </div>
 </template>

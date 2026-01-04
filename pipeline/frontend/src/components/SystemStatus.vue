@@ -47,31 +47,42 @@ const getStatusText = (status: string) => {
 <template>
   <div class="system-status">
     <div class="status-header">
-      <h3 class="panel-title">服务状态</h3>
+      <h3 class="panel-title">
+        服务状态
+      </h3>
       <div class="status-summary">
         <span class="summary-item online">
-          <span class="dot"></span>
+          <span class="dot" />
           {{ services.filter(s => s.status === 'online').length }} 在线
         </span>
         <span class="summary-item warning">
-          <span class="dot"></span>
+          <span class="dot" />
           {{ services.filter(s => s.status === 'warning').length }} 警告
         </span>
         <span class="summary-item offline">
-          <span class="dot"></span>
+          <span class="dot" />
           {{ services.filter(s => s.status === 'offline').length }} 离线
         </span>
         <span class="summary-item unknown">
-          <span class="dot"></span>
+          <span class="dot" />
           {{ services.filter(s => s.status === 'unknown').length }} 未检测
         </span>
       </div>
     </div>
 
     <div class="meta">
-      <div class="mono">API: {{ props.apiBaseUrl }}</div>
-      <div class="mono">Last: {{ props.lastUpdatedIso ? new Date(props.lastUpdatedIso).toLocaleTimeString('zh-CN') : '--' }}</div>
-      <div v-if="props.error" class="mono err">{{ props.error }}</div>
+      <div class="mono">
+        API: {{ props.apiBaseUrl }}
+      </div>
+      <div class="mono">
+        Last: {{ props.lastUpdatedIso ? new Date(props.lastUpdatedIso).toLocaleTimeString('zh-CN') : '--' }}
+      </div>
+      <div
+        v-if="props.error"
+        class="mono err"
+      >
+        {{ props.error }}
+      </div>
     </div>
     
     <div class="services-grid">
@@ -82,7 +93,7 @@ const getStatusText = (status: string) => {
         :class="getStatusClass(service.status)"
       >
         <div class="service-indicator">
-          <span class="indicator-dot"></span>
+          <span class="indicator-dot" />
         </div>
         <div class="service-info">
           <span class="service-name">{{ service.name }}</span>
