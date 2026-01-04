@@ -8,6 +8,7 @@
 - 🌟 **动态视觉效果** - 流光边框、脉冲动画、扫描线效果
 - 📊 **丰富的数据可视化** - 折线图、雷达图、环形图、仪表盘等
 - 🔄 **实时数据更新** - 轮询 FastAPI `/alerts`，动态刷新图表与告警列表
+- 🚀 **启动页控制回放** - 欢迎页点击「开始」后触发后端回放日志到 Kafka（`/control/start`）
 - 📱 **响应式布局** - 适配不同屏幕尺寸
 - ⚡ **Bun 包管理** - 使用 Bun 作为包管理器，更快的安装和构建速度
 
@@ -71,6 +72,9 @@ bun run dev
 - `GET /health`
 - `GET /alerts?limit=200`
 - `GET /alerts/{alert_id}`
+- `GET /control/status`
+- `POST /control/start`
+- `POST /control/stop`
 
 前端默认通过 Vite 代理访问后端：
 

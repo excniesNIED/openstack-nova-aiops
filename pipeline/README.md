@@ -91,7 +91,32 @@ docker compose -f pipeline/docker-compose.yml exec spark-master bash -lc '
 
 ---
 
-## 5. 回放 sample 日志进 Kafka（模拟在线）
+## 5. 回放日志进 Kafka（模拟在线）
+
+本项目提供两种回放方式：
+
+### 5.1 方式 A：通过后端控制接口（推荐）
+
+后端已内置回放器（`/control/*`），并在 `pipeline/docker-compose.yml` 中将仓库根目录挂载为只读目录，可直接回放这些日志：
+
+可直接用前端欢迎页点击「开始」，或用 curl：
+
+```bash
+curl -X POST "http://localhost:8000/control/start" \
+  -H "Content-Type: application/json" \
+  -d '{"dataset_id":"sample","rate":80,"loop":false,"max_records":0}'
+```
+
+查看状态 / 停止：
+
+```bash
+curl "http://localhost:8000/control/status"
+curl -X POST "http://localhost:8000/control/stop"
+```
+
+> 注意：回放只负责写入 `openstack.raw`；仍需先启动 Spark Streaming（第 4 节）才能产生 `openstack.features` 并触发告警。
+
+### 5.2 方式 B：使用独立回放脚本（可选）
 
 在宿主机（你的 conda 环境）执行（先安装回放器依赖）：
 

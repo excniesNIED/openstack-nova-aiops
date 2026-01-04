@@ -150,7 +150,17 @@ docker compose -f pipeline/docker-compose.yml exec spark-master bash -lc '
 '
 ```
 
-4) 回放 `sample.log`：
+4) 回放日志（写入 `openstack.raw`）：
+
+- **方式 A（推荐）**：通过后端控制接口（也可在前端欢迎页点击「开始」）：
+
+```bash
+curl -X POST "http://localhost:8000/control/start" \
+  -H "Content-Type: application/json" \
+  -d '{"dataset_id":"sample","rate":80,"loop":false,"max_records":0}'
+```
+
+- **方式 B（可选）**：使用独立回放脚本：
 
 ```bash
 pip install -r pipeline/replayer/requirements-replayer.txt
@@ -178,4 +188,3 @@ curl "http://localhost:8000/alerts?limit=20"
 - `--window/--slide`（Spark）：60s/30s 是折中；想更快触发告警可用 30s/10s
 - `APP_ALERT_THRESHOLD`：0.6（更敏感）～0.8（更保守）
 - `APP_DEDUP_TTL_SEC`：300（5min）避免刷屏
-
