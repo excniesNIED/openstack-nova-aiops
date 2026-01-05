@@ -1,4 +1,9 @@
 services:
+  # Spark images: Bitnami stopped publishing/maintaining public Spark images; default to Apache's official images.
+  # Override with `SPARK_IMAGE=...` if you have a private mirror/registry.
+  # Example: SPARK_IMAGE=apache/spark:3.5.3 docker compose -f pipeline/docker-compose.yml up -d
+  x-spark-image: &spark_image ${SPARK_IMAGE:-apache/spark:3.5.3}
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
     environment:
@@ -58,16 +63,19 @@ services:
     restart: "no"
 
   spark-master:
-    # NOTE: Bitnami doesn't publish an abbreviated `3.5` tag; use a full semver tag.
-    image: bitnami/spark:3.5.0
+    image: *spark_image
+    command:
+      - /opt/spark/bin/spark-class
+      - org.apache.spark.deploy.master.Master
+      - --host
+      - spark-master
+      - --port
+      - "7077"
+      - --webui-port
+      - "8080"
     environment:
-      - SPARK_MODE=master
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
       # Optional: enable HDFS client config when starting with --profile hadoop.
-      - HADOOP_CONF_DIR=/opt/bitnami/spark/conf/hadoop
+      - HADOOP_CONF_DIR=/opt/spark/conf/hadoop
     ports:
       - "7077:7077"
       - "8080:8080"
@@ -75,26 +83,28 @@ services:
       - ../:/opt/workspace:ro
       - ./streaming:/opt/pipeline/streaming:ro
       - spark-checkpoints:/opt/checkpoints
-      - ./hadoop/conf:/opt/bitnami/spark/conf/hadoop:ro
+      - ./hadoop/conf:/opt/spark/conf/hadoop:ro
 
   spark-worker:
-    image: bitnami/spark:3.5.0
+    image: *spark_image
     depends_on:
       - spark-master
+    command:
+      - /opt/spark/bin/spark-class
+      - org.apache.spark.deploy.worker.Worker
+      - spark://spark-master:7077
+      - --cores
+      - "2"
+      - --memory
+      - 2g
+      - --webui-port
+      - "8081"
     environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_MEMORY=2G
-      - SPARK_WORKER_CORES=2
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
-      - HADOOP_CONF_DIR=/opt/bitnami/spark/conf/hadoop
+      - HADOOP_CONF_DIR=/opt/spark/conf/hadoop
     ports:
       - "8081:8081"
     volumes:
-      - ./hadoop/conf:/opt/bitnami/spark/conf/hadoop:ro
+      - ./hadoop/conf:/opt/spark/conf/hadoop:ro
 
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
