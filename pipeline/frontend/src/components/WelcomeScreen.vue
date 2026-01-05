@@ -191,6 +191,7 @@ onMounted(async () => {
             <d-input
               v-else
               v-model="logName"
+              style="width: 100%"
               placeholder="例如 openstack-nova-sample.log"
             />
           </div>
@@ -331,7 +332,10 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 0.25rem;
+  padding: 0.75rem;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
 }
 
 .topbar {
@@ -401,8 +405,10 @@ onMounted(async () => {
 
 .panel-title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
+  line-height: 1.3;
   color: var(--primary-color);
+  letter-spacing: 0.5px;
 }
 
 .panel-meta {
@@ -419,20 +425,22 @@ onMounted(async () => {
 
 .row {
   display: grid;
-  grid-template-columns: 90px 1fr;
+  grid-template-columns: 110px 1fr;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .label {
   color: var(--text-secondary);
   font-size: 0.85rem;
+  line-height: 1.2;
 }
 
 .inline {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .hint {
@@ -517,4 +525,3 @@ onMounted(async () => {
   }
 }
 </style>
-

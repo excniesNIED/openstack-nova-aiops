@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { DependencyCheck, HealthResponse } from '@/api/types'
 
 type ServiceStatusKind = 'online' | 'warning' | 'offline' | 'unknown'
 
@@ -7,22 +8,68 @@ const props = defineProps<{
   apiBaseUrl: string
   apiOk: boolean | null
   apiLatencyMs: number | null
+  health: HealthResponse | null
   lastUpdatedIso: string | null
   error: string | null
 }>()
 
+type ServiceItem = {
+  key: string
+  name: string
+  status: ServiceStatusKind
+  rawStatus?: string
+  latencyMs?: number | null
+  availability: string
+  endpoint?: string | null
+}
+
+const normalizeDep = (
+  dep?: DependencyCheck,
+): { kind: ServiceStatusKind; availability: string; latencyMs: number | null; rawStatus: string; endpoint: string | null } => {
+  const raw = (dep?.status ?? 'unknown') as string
+  const latencyMs = dep?.latency_ms ?? null
+  const endpoint = dep?.host && dep?.port ? `${dep.host}:${dep.port}` : null
+
+  if (raw === 'up') return { kind: 'online', availability: 'OK', latencyMs, rawStatus: raw, endpoint }
+  if (raw === 'down') return { kind: 'offline', availability: 'DOWN', latencyMs, rawStatus: raw, endpoint }
+  if (raw === 'not_configured') return { kind: 'unknown', availability: 'N/A', latencyMs, rawStatus: raw, endpoint: null }
+  if (raw === 'disabled') return { kind: 'unknown', availability: 'N/A', latencyMs, rawStatus: raw, endpoint }
+  return { kind: 'unknown', availability: '--', latencyMs, rawStatus: raw, endpoint }
+}
+
 const services = computed(() => {
   const apiStatus: ServiceStatusKind =
     props.apiOk === true ? (props.apiLatencyMs != null && props.apiLatencyMs > 1000 ? 'warning' : 'online') : props.apiOk === false ? 'offline' : 'unknown'
-  const apiLatency = props.apiLatencyMs ?? 0
+  const apiLatency = props.apiLatencyMs ?? null
   const apiUptime = props.apiOk === true ? 'OK' : props.apiOk === false ? 'DOWN' : '--'
 
+  const deps = props.health?.dependencies ?? {}
+  const kafka = normalizeDep(deps.kafka)
+  const spark = normalizeDep(deps.spark)
+  const database = normalizeDep(deps.database)
+  const hdfs = normalizeDep(deps.hdfs)
+  const hbase = normalizeDep(deps.hbase)
+  const hive = normalizeDep(deps.hive)
+
+  const dbDriver = deps.database?.driver ?? ''
+  const dbName = dbDriver.includes('mysql') ? 'MariaDB' : dbDriver.includes('sqlite') ? 'SQLite' : 'Database'
+
   return [
-    { name: 'FastAPI Backend', status: apiStatus, latency: apiLatency, uptime: apiUptime },
-    { name: 'Kafka', status: 'unknown' as const, latency: 0, uptime: '--' },
-    { name: 'Spark', status: 'unknown' as const, latency: 0, uptime: '--' },
-    { name: 'SQLite(DB)', status: 'unknown' as const, latency: 0, uptime: '--' },
-  ]
+    {
+      key: 'api',
+      name: 'FastAPI Backend',
+      status: apiStatus,
+      latencyMs: apiLatency,
+      availability: apiUptime,
+      endpoint: props.apiBaseUrl,
+    },
+    { key: 'kafka', name: 'Kafka', status: kafka.kind, rawStatus: kafka.rawStatus, latencyMs: kafka.latencyMs, availability: kafka.availability, endpoint: kafka.endpoint },
+    { key: 'spark', name: 'Spark', status: spark.kind, rawStatus: spark.rawStatus, latencyMs: spark.latencyMs, availability: spark.availability, endpoint: spark.endpoint },
+    { key: 'db', name: dbName, status: database.kind, rawStatus: database.rawStatus, latencyMs: database.latencyMs, availability: database.availability, endpoint: database.endpoint },
+    { key: 'hdfs', name: 'HDFS', status: hdfs.kind, rawStatus: hdfs.rawStatus, latencyMs: hdfs.latencyMs, availability: hdfs.availability, endpoint: hdfs.endpoint },
+    { key: 'hbase', name: 'HBase', status: hbase.kind, rawStatus: hbase.rawStatus, latencyMs: hbase.latencyMs, availability: hbase.availability, endpoint: hbase.endpoint },
+    { key: 'hive', name: 'Hive', status: hive.kind, rawStatus: hive.rawStatus, latencyMs: hive.latencyMs, availability: hive.availability, endpoint: hive.endpoint },
+  ] satisfies ServiceItem[]
 })
 
 const getStatusClass = (status: string) => {
@@ -34,13 +81,10 @@ const getStatusClass = (status: string) => {
   }[status] || 'status-online'
 }
 
-const getStatusText = (status: string) => {
-  return {
-    online: '运行中',
-    warning: '警告',
-    offline: '离线',
-    unknown: '未知',
-  }[status] || '未知'
+const getStatusText = (status: ServiceStatusKind, rawStatus?: string) => {
+  if (rawStatus === 'not_configured') return '未配置'
+  if (rawStatus === 'disabled') return '未启用'
+  return { online: '运行中', warning: '警告', offline: '离线', unknown: '未知' }[status] || '未知'
 }
 </script>
 
@@ -86,9 +130,9 @@ const getStatusText = (status: string) => {
     </div>
     
     <div class="services-grid">
-      <div 
-        v-for="service in services" 
-        :key="service.name" 
+      <div
+        v-for="service in services"
+        :key="service.key"
         class="service-card"
         :class="getStatusClass(service.status)"
       >
@@ -97,16 +141,23 @@ const getStatusText = (status: string) => {
         </div>
         <div class="service-info">
           <span class="service-name">{{ service.name }}</span>
-          <span class="service-status">{{ getStatusText(service.status) }}</span>
+          <span class="service-status">{{ getStatusText(service.status, service.rawStatus) }}</span>
+          <span
+            v-if="service.endpoint"
+            class="service-endpoint mono"
+            :title="service.endpoint"
+          >
+            {{ service.endpoint }}
+          </span>
         </div>
         <div class="service-metrics">
           <div class="metric">
             <span class="metric-label">延迟</span>
-            <span class="metric-value">{{ service.latency ? `${service.latency}ms` : '--' }}</span>
+            <span class="metric-value">{{ service.latencyMs != null ? `${service.latencyMs}ms` : '—' }}</span>
           </div>
           <div class="metric">
             <span class="metric-label">可用性</span>
-            <span class="metric-value">{{ service.uptime }}</span>
+            <span class="metric-value">{{ service.availability }}</span>
           </div>
         </div>
       </div>
@@ -301,6 +352,15 @@ const getStatusText = (status: string) => {
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+.service-endpoint {
+  font-size: 0.7rem;
+  color: rgba(224, 224, 255, 0.65);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .service-metrics {

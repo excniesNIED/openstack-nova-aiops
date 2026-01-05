@@ -1,6 +1,6 @@
 import { computed, onMounted, onUnmounted, ref, type Ref, watch } from 'vue'
 import { getHealth, listAlerts } from '@/api/pipeline'
-import type { Alert } from '@/api/types'
+import type { Alert, HealthResponse } from '@/api/types'
 
 export function usePipelineAlerts(
   apiBaseUrl: Ref<string>,
@@ -18,6 +18,7 @@ export function usePipelineAlerts(
 
   const apiOk = ref<boolean | null>(null)
   const apiLatencyMs = ref<number | null>(null)
+  const health = ref<HealthResponse | null>(null)
   const lastUpdatedIso = ref<string | null>(null)
 
   const isReady = computed(() => apiOk.value === true && !loading.value)
@@ -60,11 +61,12 @@ export function usePipelineAlerts(
   const refresh = async () => {
     loading.value = true
     error.value = null
-    apiLatencyMs.value = null
+    // Keep last known health/latency during refresh to avoid UI flicker.
 
     const start = performance.now()
     try {
       const h = await getHealth(apiBaseUrl.value, { timeoutMs: 3000 })
+      health.value = h
       apiOk.value = !!h.ok
       apiLatencyMs.value = Math.round(performance.now() - start)
 
@@ -99,5 +101,5 @@ export function usePipelineAlerts(
     { flush: 'post' },
   )
 
-  return { alerts, loading, error, apiOk, apiLatencyMs, lastUpdatedIso, isReady, refresh }
+  return { alerts, loading, error, apiOk, apiLatencyMs, health, lastUpdatedIso, isReady, refresh }
 }

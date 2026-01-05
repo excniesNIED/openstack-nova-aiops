@@ -1,5 +1,3 @@
-import './assets/main.css'
-
 import { createApp } from 'vue'
 import App from './App.vue'
 
@@ -11,6 +9,9 @@ import '@devui-design/icons/icomoon/devui-icon.css'
 // Vue Data UI
 import { VueUiRadar, VueUiDonut, VueUiSparkline, VueUiGauge, VueUiXy } from 'vue-data-ui'
 import 'vue-data-ui/style.css'
+
+// App theme overrides (must be loaded after library styles)
+import './assets/main.css'
 
 const app = createApp(App)
 

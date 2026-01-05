@@ -33,9 +33,29 @@ export type Alert = {
   evidence: AlertEvidence
 }
 
+export type DependencyCheck = {
+  status: 'up' | 'down' | 'disabled' | 'not_configured' | string
+  host?: string
+  port?: number
+  latency_ms?: number | null
+  error?: string
+  driver?: string
+}
+
+export type Dependencies = {
+  kafka?: DependencyCheck
+  spark?: DependencyCheck
+  database?: DependencyCheck
+  hdfs?: DependencyCheck
+  hbase?: DependencyCheck
+  hive?: DependencyCheck
+}
+
 export type HealthResponse = {
   ok: boolean
   replay_running?: boolean
+  dependencies_ok?: boolean
+  dependencies?: Dependencies
 }
 
 export type ControlStatus = {

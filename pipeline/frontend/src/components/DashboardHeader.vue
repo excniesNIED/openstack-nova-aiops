@@ -73,6 +73,7 @@ const statusText = () => {
         @click="props.onOpenSettings?.()"
       >
         <i class="icon icon-setting" />
+        设置
       </d-button>
     </div>
   </header>
@@ -232,12 +233,12 @@ const statusText = () => {
 }
 
 .header-btn {
-  width: 40px;
   height: 40px;
-  padding: 0;
+  padding: 0 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
   border-color: var(--border-glow);
   color: var(--text-secondary);
   transition: all 0.3s ease;

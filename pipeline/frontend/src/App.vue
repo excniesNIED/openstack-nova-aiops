@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { getControlStatus } from './api/pipeline'
+import { getControlStatus, getHealth } from './api/pipeline'
 import DashboardHeader from './components/DashboardHeader.vue'
 import StatsCard from './components/StatsCard.vue'
 import RadarChart from './components/RadarChart.vue'
@@ -18,7 +18,7 @@ const currentTime = ref(new Date().toLocaleTimeString())
 let timeInterval: number | null = null
 
 const { apiBaseUrl } = useApiBaseUrl()
-const { alerts, loading, error, apiOk, apiLatencyMs, lastUpdatedIso, refresh } = usePipelineAlerts(apiBaseUrl, {
+const { alerts, loading, error, apiOk, apiLatencyMs, health, lastUpdatedIso, refresh } = usePipelineAlerts(apiBaseUrl, {
   pollMs: 3000,
   limit: 200,
 })
@@ -33,9 +33,49 @@ const openSettings = () => {
   settingsOpen.value = true
 }
 
-const saveSettings = () => {
+const refreshingNow = ref(false)
+const refreshNow = async () => {
+  refreshingNow.value = true
+  try {
+    await refresh()
+  } finally {
+    refreshingNow.value = false
+  }
+}
+
+const apiTestLoading = ref(false)
+const apiTestError = ref<string | null>(null)
+const apiTestLatencyMs = ref<number | null>(null)
+const apiTestOk = ref<boolean | null>(null)
+const apiTestDepsOk = ref<boolean | null>(null)
+
+const testApi = async () => {
+  apiTestLoading.value = true
+  apiTestError.value = null
+  apiTestLatencyMs.value = null
+  apiTestOk.value = null
+  apiTestDepsOk.value = null
+
+  const base = apiBaseUrlDraft.value.trim() || apiBaseUrl.value
+  const start = performance.now()
+  try {
+    const h = await getHealth(base, { timeoutMs: 3000 })
+    apiTestLatencyMs.value = Math.round(performance.now() - start)
+    apiTestOk.value = !!h.ok
+    apiTestDepsOk.value = h.dependencies_ok ?? null
+  } catch (e) {
+    apiTestLatencyMs.value = Math.round(performance.now() - start)
+    apiTestOk.value = false
+    apiTestError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    apiTestLoading.value = false
+  }
+}
+
+const saveSettings = async () => {
   apiBaseUrl.value = apiBaseUrlDraft.value.trim() || apiBaseUrl.value
   settingsOpen.value = false
+  await refreshNow()
 }
 
 const countBySeverity = computed(() => {
@@ -266,6 +306,7 @@ onUnmounted(() => {
             :api-base-url="apiBaseUrl"
             :api-ok="apiOk"
             :api-latency-ms="apiLatencyMs"
+            :health="health"
             :last-updated-iso="lastUpdatedIso"
             :error="error"
           />
@@ -289,20 +330,55 @@ onUnmounted(() => {
         <div class="settings-hint">
           默认使用 Vite 代理：<span class="mono">/api</span> → <span class="mono">http://localhost:8000</span>
         </div>
-        <div class="settings-actions">
-          <d-button
-            variant="outline"
-            @click="settingsOpen = false"
-          >
-            取消
-          </d-button>
-          <d-button
-            color="primary"
-            variant="solid"
-            @click="saveSettings"
-          >
-            保存
-          </d-button>
+        <div class="settings-actions split">
+          <div class="left">
+            <d-button
+              variant="outline"
+              :loading="refreshingNow"
+              @click="refreshNow"
+            >
+              一键刷新
+            </d-button>
+            <d-button
+              variant="outline"
+              :loading="apiTestLoading"
+              @click="testApi"
+            >
+              测试 API
+            </d-button>
+            <div class="test-meta mono">
+              <span v-if="apiTestOk === true">OK</span>
+              <span v-else-if="apiTestOk === false">FAIL</span>
+              <span v-else>—</span>
+              <span class="sep">·</span>
+              <span>{{ apiTestLatencyMs == null ? '--' : `${apiTestLatencyMs}ms` }}</span>
+              <span
+                v-if="apiTestDepsOk != null"
+                class="sep"
+              >·</span>
+              <span v-if="apiTestDepsOk === true">deps OK</span>
+              <span v-else-if="apiTestDepsOk === false">deps NOT OK</span>
+              <span
+                v-if="apiTestError"
+                class="err"
+              >{{ apiTestError }}</span>
+            </div>
+          </div>
+          <div class="right">
+            <d-button
+              variant="outline"
+              @click="settingsOpen = false"
+            >
+              取消
+            </d-button>
+            <d-button
+              color="primary"
+              variant="solid"
+              @click="saveSettings"
+            >
+              保存
+            </d-button>
+          </div>
         </div>
       </div>
     </d-modal>
@@ -451,5 +527,35 @@ onUnmounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+.settings-actions.split {
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.settings-actions .left,
+.settings-actions .right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.test-meta {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.test-meta .sep {
+  margin: 0 0.25rem;
+  opacity: 0.6;
+}
+
+.test-meta .err {
+  margin-left: 0.5rem;
+  color: #ff4444;
 }
 </style>

@@ -6,6 +6,8 @@ const props = defineProps<{
   items: Array<{ name: string; value: number; color: string }>
 }>()
 
+const total = computed(() => props.items.reduce((acc, it) => acc + (Number(it.value) || 0), 0))
+
 const donutConfig = ref({
   style: {
     fontFamily: 'inherit',
@@ -100,7 +102,23 @@ const donutDataset = computed(() =>
 
 <template>
   <div class="donut-chart">
+    <div
+      v-if="total <= 0"
+      class="donut-empty"
+      aria-label="No alerts"
+    >
+      <div class="ring" />
+      <div class="empty-text">
+        <div class="empty-total mono">
+          0
+        </div>
+        <div class="empty-sub">
+          告警
+        </div>
+      </div>
+    </div>
     <VueUiDonut
+      v-else
       :config="donutConfig"
       :dataset="donutDataset"
     />
@@ -131,6 +149,53 @@ const donutDataset = computed(() =>
   justify-content: center;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.donut-empty {
+  width: 100%;
+  max-width: 320px;
+  height: 260px;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.donut-empty .ring {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  border: 18px solid rgba(0, 240, 255, 0.12);
+  box-shadow: 0 0 24px rgba(0, 240, 255, 0.15), inset 0 0 18px rgba(0, 240, 255, 0.08);
+  position: relative;
+}
+
+.donut-empty .ring::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 240, 255, 0.25);
+}
+
+.empty-text {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.empty-total {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #00f0ff;
+  text-shadow: 0 0 18px rgba(0, 240, 255, 0.35);
+}
+
+.empty-sub {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
 }
 
 .legend {
