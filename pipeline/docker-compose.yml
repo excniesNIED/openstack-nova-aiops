@@ -1,8 +1,9 @@
+# Spark images: Bitnami stopped publishing/maintaining public Spark images; default to Apache's official images.
+# Override with SPARK_IMAGE=... if you have a private mirror/registry.
+# Example: SPARK_IMAGE=apache/spark:3.5.3 docker compose -f pipeline/docker-compose.yml up -d
+x-spark-image: &spark_image ${SPARK_IMAGE:-apache/spark:3.5.3}
+
 services:
-  # Spark images: Bitnami stopped publishing/maintaining public Spark images; default to Apache's official images.
-  # Override with `SPARK_IMAGE=...` if you have a private mirror/registry.
-  # Example: SPARK_IMAGE=apache/spark:3.5.3 docker compose -f pipeline/docker-compose.yml up -d
-  x-spark-image: &spark_image ${SPARK_IMAGE:-apache/spark:3.5.3}
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
