@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 
 sys.dont_write_bytecode = True
 
-from typing import Optional
+from typing import Optional, Tuple
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 
 from .broadcast import AlertBroadcaster
 from .db import append_alert_comment, get_alert, init_db, list_alerts, make_engine, update_alert_status
@@ -28,6 +30,40 @@ class StartReplayRequest(BaseModel):
 
 class CommentRequest(BaseModel):
     comment: str = Field(min_length=1, max_length=1000)
+
+
+def _parse_first_host_port(bootstrap: str, *, default_port: int) -> Tuple[str, int]:
+    s = (bootstrap or "").strip()
+    if not s:
+        return "localhost", int(default_port)
+    first = s.split(",")[0].strip()
+    if not first:
+        return "localhost", int(default_port)
+    if "://" in first:
+        first = first.split("://", 1)[1]
+    if ":" in first:
+        host, port_s = first.rsplit(":", 1)
+        try:
+            return host.strip() or "localhost", int(port_s)
+        except Exception:
+            return host.strip() or "localhost", int(default_port)
+    return first, int(default_port)
+
+
+def _tcp_check(host: str, port: int, *, timeout_sec: float = 0.5) -> dict:
+    import socket
+    import time
+
+    t0 = time.perf_counter()
+    try:
+        with socket.create_connection((host, int(port)), timeout=float(timeout_sec)):
+            dt_ms = int((time.perf_counter() - t0) * 1000)
+            return {"status": "up", "host": host, "port": int(port), "latency_ms": dt_ms}
+    except socket.gaierror:
+        return {"status": "disabled", "host": host, "port": int(port), "latency_ms": None}
+    except Exception as e:
+        dt_ms = int((time.perf_counter() - t0) * 1000)
+        return {"status": "down", "host": host, "port": int(port), "latency_ms": dt_ms, "error": str(e)}
 
 
 def create_app() -> FastAPI:
@@ -62,7 +98,48 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health():
         st = replay.status()
-        return {"ok": True, "replay_running": bool(st.get("running"))}
+        kafka_host, kafka_port = _parse_first_host_port(cfg.kafka_bootstrap, default_port=9092)
+        spark_host, spark_port = _parse_first_host_port("spark-master:7077", default_port=7077)
+        mariadb_host, mariadb_port = _parse_first_host_port("mariadb:3306", default_port=3306)
+        hdfs_host, hdfs_port = _parse_first_host_port("namenode:8020", default_port=8020)
+
+        deps = {
+            "kafka": _tcp_check(kafka_host, kafka_port),
+            "spark": _tcp_check(spark_host, spark_port),
+            "database": {},
+            "hdfs": _tcp_check(hdfs_host, hdfs_port, timeout_sec=0.8),
+            "hbase": {"status": "not_configured"},
+            "hive": {"status": "not_configured"},
+        }
+
+        # DB check: the app can run with either SQLite or MariaDB; both must be reflected.
+        try:
+            t0 = time.perf_counter()
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            deps["database"] = {
+                "status": "up",
+                "driver": str(engine.url.drivername),
+                "host": mariadb_host if "mysql" in str(engine.url.drivername) else "local",
+                "port": mariadb_port if "mysql" in str(engine.url.drivername) else None,
+                "latency_ms": int((time.perf_counter() - t0) * 1000),
+            }
+        except Exception as e:
+            deps["database"] = {
+                "status": "down",
+                "driver": str(engine.url.drivername),
+                "error": str(e),
+            }
+
+        required = ["kafka", "spark", "database"]
+        deps_ok = all(deps.get(k, {}).get("status") == "up" for k in required)
+
+        return {
+            "ok": True,
+            "replay_running": bool(st.get("running")),
+            "dependencies_ok": bool(deps_ok),
+            "dependencies": deps,
+        }
 
     @app.get("/control/status")
     def control_status():
