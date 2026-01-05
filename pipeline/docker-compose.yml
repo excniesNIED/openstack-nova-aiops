@@ -51,11 +51,20 @@ services:
     image: confluentinc/cp-kafka:7.6.1
     depends_on:
       - kafka
+    environment:
+      # Avoid log4j trying to write logs to "/" inside this init container.
+      KAFKA_LOG4J_OPTS: "-Dkafka.logs.dir=/tmp"
     entrypoint:
       - bash
       - -lc
       - |
-        cub kafka-ready -b kafka:9092 1 30
+        set -euo pipefail
+        echo "Waiting for Kafka broker to accept requests..."
+        for i in $$(seq 1 60); do
+          kafka-topics --bootstrap-server kafka:9092 --list >/dev/null 2>&1 && break
+          sleep 2
+        done
+        kafka-topics --bootstrap-server kafka:9092 --list >/dev/null
         kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.raw --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.features --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.alerts --partitions 3 --replication-factor 1
@@ -107,6 +116,64 @@ services:
     volumes:
       - ./hadoop/conf:/opt/spark/conf/hadoop:ro
 
+  spark-streaming:
+    image: *spark_image
+    depends_on:
+      - spark-master
+      - spark-worker
+      - kafka-init
+    environment:
+      - HADOOP_CONF_DIR=/opt/spark/conf/hadoop
+    volumes:
+      - ./streaming:/opt/pipeline/streaming:ro
+      - ./hadoop/conf:/opt/spark/conf/hadoop:ro
+      - spark-checkpoints:/opt/checkpoints
+      - spark-ivy:/tmp/.ivy2
+    command:
+      - bash
+      - -lc
+      - |
+        set -euo pipefail
+        wait_port() {
+          local host="$1"
+          local port="$2"
+          for i in $$(seq 1 60); do
+            (echo >"/dev/tcp/$${host}/$${port}") >/dev/null 2>&1 && return 0
+            sleep 2
+          done
+          return 1
+        }
+
+        echo "Waiting for Spark master (7077)..."
+        wait_port spark-master 7077
+        echo "Waiting for Kafka (9092)..."
+        wait_port kafka 9092
+
+        HDFS_ARGS=()
+        if getent hosts namenode >/dev/null 2>&1; then
+          if (echo >"/dev/tcp/namenode/8020") >/dev/null 2>&1; then
+            HDFS_ARGS+=(
+              --hdfs-records-path hdfs://namenode:8020/data/openstack/records
+              --hdfs-features-path hdfs://namenode:8020/data/openstack/features
+            )
+            echo "HDFS detected; enabling Parquet sinks."
+          fi
+        fi
+
+        exec /opt/spark/bin/spark-submit \
+          --master spark://spark-master:7077 \
+          --conf spark.jars.ivy=/tmp/.ivy2 \
+          --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.apache.spark:spark-token-provider-kafka-0-10_2.12:3.5.3 \
+          /opt/pipeline/streaming/openstack_streaming_job.py \
+            --bootstrap kafka:9092 \
+            --raw-topic openstack.raw \
+            --features-topic openstack.features \
+            --window 60 \
+            --slide 30 \
+            --checkpoint /opt/checkpoints/openstack_streaming_job \
+            "$${HDFS_ARGS[@]}"
+    restart: unless-stopped
+
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
     profiles: ["hadoop"]
@@ -143,13 +210,22 @@ services:
       - bash
       - -lc
       - |
-        set -e
-        for i in $(seq 1 30); do
-          hdfs dfs -ls / >/dev/null 2>&1 && break
+        set -euo pipefail
+        HDFS="$(command -v hdfs || true)"
+        if [ -z "$$HDFS" ] && [ -x "/opt/hadoop-3.2.1/bin/hdfs" ]; then
+          HDFS="/opt/hadoop-3.2.1/bin/hdfs"
+        fi
+        if [ -z "$$HDFS" ]; then
+          echo "ERROR: hdfs CLI not found in container; cannot initialize HDFS directories."
+          exit 1
+        fi
+        for i in $$(seq 1 60); do
+          "$$HDFS" dfs -ls / >/dev/null 2>&1 && break
           sleep 2
         done
-        hdfs dfs -mkdir -p /data/openstack/records /data/openstack/features || true
-        hdfs dfs -chmod -R 777 /data/openstack || true
+        "$$HDFS" dfs -ls / >/dev/null
+        "$$HDFS" dfs -mkdir -p /data/openstack/records /data/openstack/features
+        "$$HDFS" dfs -chmod -R 777 /data/openstack
         echo "HDFS directories ready."
     restart: "no"
 
@@ -181,6 +257,20 @@ services:
     working_dir: /app
     command: >
       bash -lc "
+      set -euo pipefail
+      wait_port() {
+        local host=\"$1\"
+        local port=\"$2\"
+        for i in \$$(seq 1 60); do
+          (echo >\"/dev/tcp/\$${host}/\$${port}\") >/dev/null 2>&1 && return 0
+          sleep 2
+        done
+        return 1
+      }
+      echo \"Waiting for Kafka (kafka:9092)...\"
+      wait_port kafka 9092
+      echo \"Waiting for MariaDB (mariadb:3306)...\"
+      wait_port mariadb 3306
       pip install --no-cache-dir -r /app/requirements-service.txt &&
       python -m service.app
       "
@@ -189,5 +279,6 @@ volumes:
   mariadb-data:
   alerts-db:
   spark-checkpoints:
+  spark-ivy:
   hadoop-namenode:
   hadoop-datanode:
