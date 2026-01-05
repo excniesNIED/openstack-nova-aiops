@@ -7,7 +7,7 @@
 3) FastAPI 内置 Worker 消费 `openstack.features`，加载离线模型推理，生成告警写入 SQLite  
 4) 通过 HTTP API 查询告警（前端可按需接入）
 
-> 说明：为了与离线特征一致，本链路使用与 `label&train/openstack_log_pipeline.py` 同风格的解析/模板化，并在特征里输出 `template_counts`、`error_cnt`、`error_ratio`、`keyword_counts` 等。
+说明：为了与离线特征一致，本链路使用与 `label&train/openstack_log_pipeline.py` 同风格的解析/模板化，并在特征里输出 `template_counts`、`error_cnt`、`error_ratio`、`keyword_counts` 等。
 
 ---
 
@@ -71,12 +71,10 @@ MariaDB 默认配置：
 `pipeline/docker-compose.yml` 已内置 `kafka-init`，启动 compose 后会自动创建；也可以手动创建：
 
 ```bash
-docker compose -f pipeline/docker-compose.yml exec kafka bash -lc '
-  kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.raw --partitions 3 --replication-factor 1
-  kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.features --partitions 3 --replication-factor 1
-  kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.alerts --partitions 3 --replication-factor 1
-  kafka-topics --bootstrap-server kafka:9092 --list
-'
+docker compose -f pipeline/docker-compose.yml exec kafka kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.raw --partitions 3 --replication-factor 1
+docker compose -f pipeline/docker-compose.yml exec kafka kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.features --partitions 3 --replication-factor 1
+docker compose -f pipeline/docker-compose.yml exec kafka kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.alerts --partitions 3 --replication-factor 1
+docker compose -f pipeline/docker-compose.yml exec kafka kafka-topics --bootstrap-server kafka:9092 --list
 ```
 
 ---
@@ -85,39 +83,26 @@ docker compose -f pipeline/docker-compose.yml exec kafka bash -lc '
 
 此任务会在 Spark 里消费 `openstack.raw`，解析/模板化并按窗口聚合，产出到 `openstack.features`。
 
-```bash
-docker compose -f pipeline/docker-compose.yml exec spark-master bash -lc '
-  spark-submit \
-    --master spark://spark-master:7077 \
-    --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
-    /opt/pipeline/streaming/openstack_streaming_job.py \
-      --bootstrap kafka:9092 \
-      --raw-topic openstack.raw \
-      --features-topic openstack.features \
-      --window 60 \
-      --slide 30
-'
-```
-
-如果启用了 HDFS（`--profile hadoop`），可把解析后的明细记录与窗口特征落到 HDFS（Parquet）：
+默认情况下，`pipeline/docker-compose.yml` 已包含 `spark-streaming` 服务，会自动运行该任务；你只需确认它在运行：
 
 ```bash
-docker compose -f pipeline/docker-compose.yml exec spark-master bash -lc '
-  spark-submit \
-    --master spark://spark-master:7077 \
-    --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
-    /opt/pipeline/streaming/openstack_streaming_job.py \
-      --bootstrap kafka:9092 \
-      --raw-topic openstack.raw \
-      --features-topic openstack.features \
-      --window 60 \
-      --slide 30 \
-      --hdfs-records-path hdfs://namenode:8020/data/openstack/records \
-      --hdfs-features-path hdfs://namenode:8020/data/openstack/features
-'
+docker compose -f pipeline/docker-compose.yml ps spark-streaming
+docker compose -f pipeline/docker-compose.yml logs -f spark-streaming
 ```
 
-> 备注：`--packages ...` 首次会从 Maven 下载依赖（需要容器能联网）。如果你所在网络受限，可以改成把 jar 预置到镜像里（后续我也可以帮你做“离线 jar 镜像”版）。
+如果需要手动启动/重跑（一般不需要），可执行（注意：首次运行会通过 Maven 下载依赖，需要容器能联网）：
+
+```bash
+docker compose -f pipeline/docker-compose.yml exec spark-master /opt/spark/bin/spark-submit --master spark://spark-master:7077 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.apache.spark:spark-token-provider-kafka-0-10_2.12:3.5.3 /opt/pipeline/streaming/openstack_streaming_job.py --bootstrap kafka:9092 --raw-topic openstack.raw --features-topic openstack.features --window 60 --slide 30 --checkpoint /opt/checkpoints/openstack_streaming_job
+```
+
+如果启用了 HDFS（`--profile hadoop`），`spark-streaming` 会自动探测 `namenode:8020` 并启用 Parquet 落地；也可以手动指定：
+
+```bash
+docker compose -f pipeline/docker-compose.yml exec spark-master /opt/spark/bin/spark-submit --master spark://spark-master:7077 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.apache.spark:spark-token-provider-kafka-0-10_2.12:3.5.3 /opt/pipeline/streaming/openstack_streaming_job.py --bootstrap kafka:9092 --raw-topic openstack.raw --features-topic openstack.features --window 60 --slide 30 --checkpoint /opt/checkpoints/openstack_streaming_job --hdfs-records-path hdfs://namenode:8020/data/openstack/records --hdfs-features-path hdfs://namenode:8020/data/openstack/features
+```
+
+备注：`--packages ...` 首次会从 Maven 下载依赖（需要容器能联网）。如果你所在网络受限，可以改成把 jar 预置到镜像里（后续我也可以帮你做“离线 jar 镜像”版）。
 
 ---
 
@@ -132,9 +117,7 @@ docker compose -f pipeline/docker-compose.yml exec spark-master bash -lc '
 可直接用前端欢迎页点击「开始」，或用 curl：
 
 ```bash
-curl -X POST "http://localhost:8000/control/start" \
-  -H "Content-Type: application/json" \
-  -d '{"dataset_id":"sample","rate":80,"loop":false,"max_records":0}'
+curl -X POST "http://localhost:8000/control/start" -H "Content-Type: application/json" -d '{"dataset_id":"sample","rate":80,"loop":false,"max_records":0}'
 ```
 
 查看状态 / 停止：
@@ -144,7 +127,7 @@ curl "http://localhost:8000/control/status"
 curl -X POST "http://localhost:8000/control/stop"
 ```
 
-> 注意：回放只负责写入 `openstack.raw`；仍需先启动 Spark Streaming（第 4 节）才能产生 `openstack.features` 并触发告警。
+注意：回放只负责写入 `openstack.raw`；仍需先启动 Spark Streaming（第 4 节）才能产生 `openstack.features` 并触发告警。
 
 ### 5.2 方式 B：使用独立回放脚本（可选）
 
@@ -157,12 +140,7 @@ pip install -r pipeline/replayer/requirements-replayer.txt
 然后回放：
 
 ```bash
-python pipeline/replayer/replay_to_kafka.py \
-  --bootstrap localhost:29092 \
-  --topic openstack.raw \
-  --dataset sample \
-  --log openstack-nova-sample.log \
-  --rate 200
+python pipeline/replayer/replay_to_kafka.py --bootstrap localhost:29092 --topic openstack.raw --dataset sample --log openstack-nova-sample.log --rate 200
 ```
 
 参数说明：

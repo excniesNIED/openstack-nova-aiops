@@ -135,52 +135,45 @@ Worker 输出，JSON 字段（与 `/alerts` API 一致）：
 docker compose -f pipeline/docker-compose.yml up -d
 ```
 
-> 可选：启动 Hadoop(HDFS) 持久化（用于落 Parquet）：
->
-> `docker compose -f pipeline/docker-compose.yml --profile hadoop up -d`
-
-2) 创建 topics：
+可选：启动 Hadoop(HDFS) 持久化（用于落 Parquet）：
 
 ```bash
-docker compose -f pipeline/docker-compose.yml exec kafka bash -lc '
-  kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.raw --partitions 3 --replication-factor 1
-  kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.features --partitions 3 --replication-factor 1
-  kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.alerts --partitions 3 --replication-factor 1
-'
+docker compose -f pipeline/docker-compose.yml --profile hadoop up -d
 ```
 
-3) 启动 Spark Streaming（raw→features）：
+2) Kafka topics（自动创建）：
+
+`pipeline/docker-compose.yml` 已包含 `kafka-init`，启动 compose 后会自动创建并校验：
+- `openstack.raw`
+- `openstack.features`
+- `openstack.alerts`
+
+你也可以手动验证：
 
 ```bash
-docker compose -f pipeline/docker-compose.yml exec spark-master bash -lc '
-  spark-submit \
-    --master spark://spark-master:7077 \
-    --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
-    /opt/pipeline/streaming/openstack_streaming_job.py \
-      --bootstrap kafka:9092 \
-      --raw-topic openstack.raw \
-      --features-topic openstack.features \
-      --window 60 \
-      --slide 30
-'
+docker compose -f pipeline/docker-compose.yml exec kafka kafka-topics --bootstrap-server kafka:9092 --list
 ```
 
-如果启用了 HDFS，可额外把明细与窗口特征写入 HDFS（Parquet）：
+3) Spark Streaming（raw→features）（自动运行）：
+
+`pipeline/docker-compose.yml` 已包含 `spark-streaming` 服务，默认会自动运行：
 
 ```bash
-docker compose -f pipeline/docker-compose.yml exec spark-master bash -lc '
-  spark-submit \
-    --master spark://spark-master:7077 \
-    --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
-    /opt/pipeline/streaming/openstack_streaming_job.py \
-      --bootstrap kafka:9092 \
-      --raw-topic openstack.raw \
-      --features-topic openstack.features \
-      --window 60 \
-      --slide 30 \
-      --hdfs-records-path hdfs://namenode:8020/data/openstack/records \
-      --hdfs-features-path hdfs://namenode:8020/data/openstack/features
-'
+docker compose -f pipeline/docker-compose.yml ps spark-streaming
+docker compose -f pipeline/docker-compose.yml logs -f spark-streaming
+```
+
+如果启用了 Hadoop profile（HDFS），`spark-streaming` 会自动探测 `namenode:8020` 并把明细与窗口特征写入 HDFS（Parquet）：
+
+默认落地路径：
+
+- `hdfs://namenode:8020/data/openstack/records`
+- `hdfs://namenode:8020/data/openstack/features`
+
+如需手动重跑（一般不需要；且首次运行会下载 Spark Kafka connector，容器需能联网）：
+
+```bash
+docker compose -f pipeline/docker-compose.yml exec spark-master /opt/spark/bin/spark-submit --master spark://spark-master:7077 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.apache.spark:spark-token-provider-kafka-0-10_2.12:3.5.3 /opt/pipeline/streaming/openstack_streaming_job.py --bootstrap kafka:9092 --raw-topic openstack.raw --features-topic openstack.features --window 60 --slide 30 --checkpoint /opt/checkpoints/openstack_streaming_job --hdfs-records-path hdfs://namenode:8020/data/openstack/records --hdfs-features-path hdfs://namenode:8020/data/openstack/features
 ```
 
 4) 回放日志（写入 `openstack.raw`）：
@@ -188,9 +181,7 @@ docker compose -f pipeline/docker-compose.yml exec spark-master bash -lc '
 - **方式 A（推荐）**：通过后端控制接口（也可在前端欢迎页点击「开始」）：
 
 ```bash
-curl -X POST "http://localhost:8000/control/start" \
-  -H "Content-Type: application/json" \
-  -d '{"dataset_id":"sample","rate":80,"loop":false,"max_records":0}'
+curl -X POST "http://localhost:8000/control/start" -H "Content-Type: application/json" -d '{"dataset_id":"sample","rate":80,"loop":false,"max_records":0}'
 ```
 
 - **方式 B（可选）**：使用独立回放脚本：
@@ -198,12 +189,7 @@ curl -X POST "http://localhost:8000/control/start" \
 ```bash
 pip install -r pipeline/replayer/requirements-replayer.txt
 
-python pipeline/replayer/replay_to_kafka.py \
-  --bootstrap localhost:29092 \
-  --topic openstack.raw \
-  --dataset sample \
-  --log openstack-nova-sample.log \
-  --rate 200
+python pipeline/replayer/replay_to_kafka.py --bootstrap localhost:29092 --topic openstack.raw --dataset sample --log openstack-nova-sample.log --rate 200
 ```
 
 5) 查告警：
