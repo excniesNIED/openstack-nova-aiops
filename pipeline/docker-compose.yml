@@ -58,7 +58,8 @@ services:
     restart: "no"
 
   spark-master:
-    image: bitnami/spark:3.5
+    # NOTE: Bitnami doesn't publish an abbreviated `3.5` tag; use a full semver tag.
+    image: bitnami/spark:3.5.0
     environment:
       - SPARK_MODE=master
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
@@ -77,7 +78,7 @@ services:
       - ./hadoop/conf:/opt/bitnami/spark/conf/hadoop:ro
 
   spark-worker:
-    image: bitnami/spark:3.5
+    image: bitnami/spark:3.5.0
     depends_on:
       - spark-master
     environment:
