@@ -99,9 +99,18 @@ def create_app() -> FastAPI:
     def health():
         st = replay.status()
         kafka_host, kafka_port = _parse_first_host_port(cfg.kafka_bootstrap, default_port=9092)
-        spark_host, spark_port = _parse_first_host_port("spark-master:7077", default_port=7077)
-        mariadb_host, mariadb_port = _parse_first_host_port("mariadb:3306", default_port=3306)
-        hdfs_host, hdfs_port = _parse_first_host_port("namenode:8020", default_port=8020)
+        spark_host, spark_port = _parse_first_host_port(
+            os.environ.get("APP_HEALTH_SPARK_ADDR", "spark-master:7077"),
+            default_port=7077,
+        )
+        mariadb_host, mariadb_port = _parse_first_host_port(
+            os.environ.get("APP_HEALTH_DB_ADDR", "mariadb:3306"),
+            default_port=3306,
+        )
+        hdfs_host, hdfs_port = _parse_first_host_port(
+            os.environ.get("APP_HEALTH_HDFS_ADDR", "namenode:8020"),
+            default_port=8020,
+        )
 
         deps = {
             "kafka": _tcp_check(kafka_host, kafka_port),
