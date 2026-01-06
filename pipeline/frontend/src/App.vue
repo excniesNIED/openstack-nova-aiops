@@ -59,7 +59,7 @@ const testApi = async () => {
   const base = apiBaseUrlDraft.value.trim() || apiBaseUrl.value
   const start = performance.now()
   try {
-    const h = await getHealth(base, { timeoutMs: 3000 })
+    const h = await getHealth(base, { timeoutMs: 8000 })
     apiTestLatencyMs.value = Math.round(performance.now() - start)
     apiTestOk.value = !!h.ok
     apiTestDepsOk.value = h.dependencies_ok ?? null
@@ -194,8 +194,8 @@ onMounted(() => {
       const st = await getControlStatus(apiBaseUrl.value, { timeoutMs: 5000 })
       if (st?.running) entered.value = true
     } catch {
-      // If control API is unavailable, fall back to directly showing the dashboard.
-      entered.value = true
+      // Keep the welcome screen so the user can adjust API Base URL when the backend is unreachable.
+      entered.value = false
     }
   })()
 })

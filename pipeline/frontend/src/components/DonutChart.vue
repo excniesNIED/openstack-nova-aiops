@@ -115,6 +115,9 @@ const donutDataset = computed(() =>
         <div class="empty-sub">
           告警
         </div>
+        <div class="empty-hint">
+          暂无数据
+        </div>
       </div>
     </div>
     <VueUiDonut
@@ -196,6 +199,12 @@ const donutDataset = computed(() =>
   font-size: 0.95rem;
   color: var(--text-secondary);
   letter-spacing: 1px;
+}
+
+.empty-hint {
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  color: rgba(224, 224, 255, 0.55);
 }
 
 .legend {

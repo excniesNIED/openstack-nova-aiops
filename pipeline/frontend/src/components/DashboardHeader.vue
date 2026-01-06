@@ -212,6 +212,17 @@ const statusText = () => {
   gap: 1rem;
 }
 
+.header-btn {
+  border-color: var(--border-glow);
+  color: var(--text-secondary);
+}
+
+.header-btn:hover {
+  border-color: rgba(0, 240, 255, 0.6);
+  color: var(--text-primary);
+  background: rgba(0, 240, 255, 0.06);
+}
+
 .time-display {
   text-align: right;
   margin-right: 1rem;

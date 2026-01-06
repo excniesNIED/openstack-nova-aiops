@@ -78,7 +78,6 @@ const startNow = async () => {
       loop: loop.value,
       max_records: maxRecords.value,
     })
-    emit('entered')
   } catch (e) {
     statusError.value = e instanceof Error ? e.message : String(e)
   } finally {
@@ -332,9 +331,9 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 0.75rem;
+  padding: 1.25rem;
   width: 100%;
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
 }
 
@@ -343,7 +342,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem 1.25rem;
+  padding: 1.25rem 1.5rem;
   background: linear-gradient(180deg, rgba(10, 20, 40, 0.95) 0%, rgba(10, 20, 40, 0.8) 100%);
   border: 1px solid var(--border-glow);
   border-radius: 12px;
@@ -365,7 +364,7 @@ onMounted(async () => {
 .brand-text .title {
   font-size: 1.25rem;
   font-weight: 800;
-  letter-spacing: 2px;
+  letter-spacing: 0.12em;
   background: var(--gradient-cyber);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -376,6 +375,8 @@ onMounted(async () => {
   margin-top: 0.25rem;
   font-size: 0.85rem;
   color: var(--text-secondary);
+  line-height: 1.45;
+  max-width: 72ch;
 }
 
 .settings-btn {
@@ -386,8 +387,8 @@ onMounted(async () => {
 .grid {
   flex: 1;
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 1.25rem;
 }
 
 .panel {
@@ -408,7 +409,7 @@ onMounted(async () => {
   font-size: 1.1rem;
   line-height: 1.3;
   color: var(--primary-color);
-  letter-spacing: 0.5px;
+  letter-spacing: 0.12em;
 }
 
 .panel-meta {
@@ -425,9 +426,9 @@ onMounted(async () => {
 
 .row {
   display: grid;
-  grid-template-columns: 110px 1fr;
+  grid-template-columns: 120px 1fr;
   align-items: center;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .label {
@@ -465,7 +466,7 @@ onMounted(async () => {
 .actions {
   margin-top: 0.25rem;
   display: flex;
-  gap: 0.75rem;
+  gap: 0.9rem;
   flex-wrap: wrap;
 }
 
@@ -519,7 +520,7 @@ onMounted(async () => {
   margin: 0.35rem 0;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1320px) {
   .grid {
     grid-template-columns: 1fr;
   }

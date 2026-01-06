@@ -2,6 +2,12 @@ import { computed, onMounted, onUnmounted, ref, type Ref, watch } from 'vue'
 import { getHealth, listAlerts } from '@/api/pipeline'
 import type { Alert, HealthResponse } from '@/api/types'
 
+function normalizeBaseUrl(baseUrl: string): string {
+  const trimmed = baseUrl.trim()
+  if (!trimmed) return '/api'
+  return trimmed.replace(/\/+$/, '')
+}
+
 export function usePipelineAlerts(
   apiBaseUrl: Ref<string>,
   options: {
@@ -27,8 +33,10 @@ export function usePipelineAlerts(
   let es: EventSource | null = null
 
   const sseUrl = computed(() => {
-    const base = apiBaseUrl.value.replace(/\/+$/, '')
-    return `${base}/events/alerts`
+    const base = normalizeBaseUrl(apiBaseUrl.value)
+    const fullPath = `${base}/events/alerts`
+    if (fullPath.startsWith('http://') || fullPath.startsWith('https://')) return fullPath
+    return new URL(fullPath, window.location.origin).toString()
   })
 
   const connectSse = () => {
@@ -59,13 +67,14 @@ export function usePipelineAlerts(
   }
 
   const refresh = async () => {
+    if (loading.value) return
     loading.value = true
     error.value = null
     // Keep last known health/latency during refresh to avoid UI flicker.
 
     const start = performance.now()
     try {
-      const h = await getHealth(apiBaseUrl.value, { timeoutMs: 3000 })
+      const h = await getHealth(apiBaseUrl.value, { timeoutMs: 8000 })
       health.value = h
       apiOk.value = !!h.ok
       apiLatencyMs.value = Math.round(performance.now() - start)
