@@ -1,0 +1,139 @@
+{
+  "baselines": {
+    "keyword_rules": {
+      "confusion_matrix_test": [
+        [
+          741,
+          0,
+          0,
+          0
+        ],
+        [
+          14,
+          15,
+          0,
+          0
+        ],
+        [
+          0,
+          30,
+          0,
+          0
+        ],
+        [
+          9,
+          1,
+          0,
+          29
+        ]
+      ],
+      "test_macro_f1": 0.5594146961110025
+    },
+    "template_centroid_cosine": {
+      "confusion_matrix_test": [
+        [
+          725,
+          16,
+          0,
+          0
+        ],
+        [
+          0,
+          28,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          30,
+          0
+        ],
+        [
+          3,
+          6,
+          14,
+          16
+        ]
+      ],
+      "test_macro_f1": 0.7694362431564179
+    },
+    "template_centroid_tpl_only": {
+      "confusion_matrix_test": [
+        [
+          725,
+          16,
+          0,
+          0
+        ],
+        [
+          0,
+          28,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          30,
+          0
+        ],
+        [
+          3,
+          6,
+          14,
+          16
+        ]
+      ],
+      "test_macro_f1": 0.7694362431564179
+    },
+    "template_multinomial_nb": {
+      "alpha": 1.0,
+      "confusion_matrix_test": [
+        [
+          741,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          28,
+          0,
+          1
+        ],
+        [
+          0,
+          8,
+          22,
+          0
+        ],
+        [
+          13,
+          8,
+          0,
+          18
+        ]
+      ],
+      "test_macro_f1": 0.8063177842058948
+    }
+  },
+  "label_names": {
+    "0": "normal",
+    "1": "fault_vm_destroy_after_create",
+    "2": "fault_network_dhcpoff",
+    "3": "fault_libvirt_domain_undefine"
+  },
+  "labels": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "n_test": 839,
+  "n_train": 3917,
+  "n_val": 840,
+  "seed": 42,
+  "train_ratio": 0.7,
+  "val_ratio": 0.15
+}

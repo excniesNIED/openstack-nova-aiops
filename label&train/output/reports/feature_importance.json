@@ -1,0 +1,882 @@
+{
+  "classes": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "label_map": {
+    "0": "normal",
+    "1": "fault_vm_destroy_after_create",
+    "2": "fault_network_dhcpoff",
+    "3": "fault_libvirt_domain_undefine"
+  },
+  "n_features": 7856,
+  "per_class": {
+    "0": {
+      "top_negative": [
+        {
+          "feature": "tpl_7bb1bd13",
+          "kind": "template",
+          "template_id": "7bb1bd13",
+          "template_text": "VM Started (Lifecycle Event)",
+          "weight": -1.2547531379053312
+        },
+        {
+          "feature": "tpl_fbd432b6",
+          "kind": "template",
+          "template_id": "fbd432b6",
+          "template_text": "VM Paused (Lifecycle Event)",
+          "weight": -1.2547531379053312
+        },
+        {
+          "feature": "error_cnt",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": -1.122670426090439
+        },
+        {
+          "feature": "kw_Failed to start libvirt guest",
+          "kind": "keyword",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.9795000661578244
+        },
+        {
+          "feature": "warn_cnt",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.8309451564113092
+        },
+        {
+          "feature": "log_error_cnt",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.785591396559575
+        },
+        {
+          "feature": "total_records",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.7757752140861636
+        },
+        {
+          "feature": "tpl_3f0cc10b",
+          "kind": "template",
+          "template_id": "3f0cc10b",
+          "template_text": "Deletion of <PATH> complete",
+          "weight": -0.6730524183103833
+        },
+        {
+          "feature": "kw_qemu unexpectedly closed the monitor",
+          "kind": "keyword",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.6003912061104116
+        },
+        {
+          "feature": "tpl_3de0f3e0",
+          "kind": "template",
+          "template_id": "3de0f3e0",
+          "template_text": "Took 7.73 seconds to spawn the instance on the hypervisor.",
+          "weight": -0.5840861974427625
+        },
+        {
+          "feature": "tpl_e32dc0e7",
+          "kind": "template",
+          "template_id": "e32dc0e7",
+          "template_text": "Took 8.99 seconds to build instance.",
+          "weight": -0.5840861974427625
+        },
+        {
+          "feature": "tpl_23c6f986",
+          "kind": "template",
+          "template_id": "23c6f986",
+          "template_text": "During sync_power_state the instance has a pending task (spawning). Skip.",
+          "weight": -0.5118909193692847
+        },
+        {
+          "feature": "tpl_d2fe8513",
+          "kind": "template",
+          "template_id": "d2fe8513",
+          "template_text": "Took 121.21 seconds to build instance.",
+          "weight": -0.44575649150628355
+        },
+        {
+          "feature": "tpl_80ecbd68",
+          "kind": "template",
+          "template_id": "80ecbd68",
+          "template_text": "Took 0.98 seconds to destroy the instance on the hypervisor.",
+          "weight": -0.44575649150628355
+        },
+        {
+          "feature": "tpl_15c7e27c",
+          "kind": "template",
+          "template_id": "15c7e27c",
+          "template_text": "Get console output",
+          "weight": -0.44575649150628355
+        }
+      ],
+      "top_positive": [
+        {
+          "feature": "tpl_af8954af",
+          "kind": "template",
+          "template_id": "af8954af",
+          "template_text": "Instance spawned successfully.",
+          "weight": 1.7774912684990583
+        },
+        {
+          "feature": "info_cnt",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": 1.1778403684156047
+        },
+        {
+          "feature": "tpl_bce59009",
+          "kind": "template",
+          "template_id": "bce59009",
+          "template_text": "Neutron deleted interface <UUID>; detaching it from the instance and deleting it from the info cache",
+          "weight": 0.6562917143603508
+        },
+        {
+          "feature": "tpl_428a3b40",
+          "kind": "template",
+          "template_id": "428a3b40",
+          "template_text": "Deleting instance files <PATH>",
+          "weight": 0.2697094079883644
+        },
+        {
+          "feature": "tpl_fbe941c1",
+          "kind": "template",
+          "template_id": "fbe941c1",
+          "template_text": "VM Resumed (Lifecycle Event)",
+          "weight": 0.2063312950153158
+        },
+        {
+          "feature": "tpl_4d69fb36",
+          "kind": "template",
+          "template_id": "4d69fb36",
+          "template_text": "Terminating instance",
+          "weight": 0.15663715888640098
+        },
+        {
+          "feature": "tpl_c4268e60",
+          "kind": "template",
+          "template_id": "c4268e60",
+          "template_text": "Creating image",
+          "weight": 0.1020210205143062
+        },
+        {
+          "feature": "tpl_c4693083",
+          "kind": "template",
+          "template_id": "c4693083",
+          "template_text": "Claim successful on node parisaserver",
+          "weight": 0.06352501354441448
+        },
+        {
+          "feature": "tpl_44540918",
+          "kind": "template",
+          "template_id": "44540918",
+          "template_text": "Took 51.93 seconds to build instance.",
+          "weight": 0.037291422281330346
+        },
+        {
+          "feature": "tpl_40db3158",
+          "kind": "template",
+          "template_id": "40db3158",
+          "template_text": "Took 45.58 seconds to spawn the instance on the hypervisor.",
+          "weight": 0.03544467420431466
+        },
+        {
+          "feature": "tpl_1af0f082",
+          "kind": "template",
+          "template_id": "1af0f082",
+          "template_text": "Took 44.24 seconds to spawn the instance on the hypervisor.",
+          "weight": 0.03518858567080638
+        },
+        {
+          "feature": "tpl_959a4a24",
+          "kind": "template",
+          "template_id": "959a4a24",
+          "template_text": "Took 51.22 seconds to build instance.",
+          "weight": 0.03394943084973558
+        },
+        {
+          "feature": "tpl_6eeaee05",
+          "kind": "template",
+          "template_id": "6eeaee05",
+          "template_text": "Took 36.94 seconds to build instance.",
+          "weight": 0.030090558001315368
+        },
+        {
+          "feature": "tpl_5e07f916",
+          "kind": "template",
+          "template_id": "5e07f916",
+          "template_text": "Took 42.63 seconds to build instance.",
+          "weight": 0.027920777761155615
+        },
+        {
+          "feature": "tpl_3482f9e3",
+          "kind": "template",
+          "template_id": "3482f9e3",
+          "template_text": "Took 52.77 seconds to build instance.",
+          "weight": 0.02601051356681081
+        }
+      ]
+    },
+    "1": {
+      "top_negative": [
+        {
+          "feature": "kw_VirtualInterfaceCreateException",
+          "kind": "keyword",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.8889707121203504
+        },
+        {
+          "feature": "tpl_1cd7d3e7",
+          "kind": "template",
+          "template_id": "1cd7d3e7",
+          "template_text": "Build of instance <UUID> aborted: Failed to allocate the network(s), not rescheduling.: nova.exception.BuildAbortException: Build of instance <UUID> aborted: Failed to allocate the network(s), not rescheduling.",
+          "weight": -0.7141244825403763
+        },
+        {
+          "feature": "tpl_af8954af",
+          "kind": "template",
+          "template_id": "af8954af",
+          "template_text": "Instance spawned successfully.",
+          "weight": -0.5668383898092769
+        },
+        {
+          "feature": "tpl_c4268e60",
+          "kind": "template",
+          "template_id": "c4268e60",
+          "template_text": "Creating image",
+          "weight": -0.5539746086160076
+        },
+        {
+          "feature": "tpl_86e61357",
+          "kind": "template",
+          "template_id": "86e61357",
+          "template_text": "Instance destroyed successfully.",
+          "weight": -0.5471182550307165
+        },
+        {
+          "feature": "log_total_records",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.5262871806518465
+        },
+        {
+          "feature": "tpl_5a910f97",
+          "kind": "template",
+          "template_id": "5a910f97",
+          "template_text": "Received unexpected event network-vif-unplugged-<UUID> for instance with vm_state active and task_state None.",
+          "weight": -0.3994939604028103
+        },
+        {
+          "feature": "tpl_c4d2619c",
+          "kind": "template",
+          "template_id": "c4d2619c",
+          "template_text": "Took 0.67 seconds to destroy the instance on the hypervisor.",
+          "weight": -0.3661697517376316
+        },
+        {
+          "feature": "tpl_32c22386",
+          "kind": "template",
+          "template_id": "32c22386",
+          "template_text": "Took 0.19 seconds to destroy the instance on the hypervisor.\nTraceback (most recent call last):\n  File \"<PATH>\", line <NUM>, in _build_resources\n    yield resources\n  File \"<PATH>\", line <NUM>, in _build_and_run_instance\n    accel_info=accel_info)\n  File \"<PATH>\", line <NUM>, in spawn\n    cleanup_instance_disks=created_disks)\n  File \"<PATH>\", line <NUM>, in _create_guest_with_network\n    cleanup_instance_disks=cleanup_instance_disks)\n  File \"<PATH>\", line <NUM>, in _cleanup_failed_start\n    if guest and guest.is_active():\n  File \"<PATH>\", line 566, in is_active\n    return self._domain.isActive()\n  File \"<PATH>\", line 190, in doit\n    result = proxy_call(self._autowrap, f, *args, **kwargs)\n  File \"<PATH>\", line 148, in proxy_call\n    rv = execute(f, *args, **kwargs)\n  File \"<PATH>\", line 129, in execute\n    six.reraise(c, e, tb)\n  File \"<PATH>\", line 703, in reraise\n    raise value\n  File \"<PATH>\", line 83, in tworker\n    rv = meth(*args, **kwargs)\n  File \"<PATH>\", line <NUM>, in isActive\n    raise libvirtError('virDomainIsActive() failed')\nlibvirt.libvirtError: Domain not found: no domain with matching uuid '<UUID>' (instance-000016de)\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<PATH>\", line 994, in emit\n    msg = self.format(record)\n  File \"<PATH>\", line 156, in format\n    return logging.StreamHandler.format(self, record) + record.reset_color\n  File \"<PATH>\", line 840, in format\n    return fmt.format(record)\n  File \"<PATH>\", line 476, in format\n    record.exc_text = self.formatException(record.exc_info, record)\n  File \"<PATH>\", line 540, in formatException\n    pl = self.conf.logging_exception_prefix % record.__dict__\nKeyError: 'message'\nCall stack:\n  File \"<PATH>\", line 686, in context_wrapper\n    func(*args, **kwargs)\n  File \"<PATH>\", line 360, in inner\n    return f(*args, **kwargs)\n  File \"<PATH>\", line <NUM>, in _locked_do_build_and_run_instance\n    result = self._do_build_and_run_instance(*args, **kwargs)\n  File \"<PATH>\", line 69, in wrapped\n    return f(self, context, *args, **kw)\n  File \"<PATH>\", line 157, in decorated_function\n    return function(self, context, *args, **kwargs)\n  File \"<PATH>\", line <NUM>, in decorated_function\n    return function(self, context, *args, **kwargs)\n  File \"<PATH>\", line 203, in decorated_function\n    return function(self, context, *args, **kwargs)\n  File \"<PATH>\", line <NUM>, in _do_build_and_run_instance\n    filter_properties, request_spec, accel_uuids)\n  File \"<PATH>\", line <NUM>, in _build_and_run_instance\n    instance=instance)\n  File \"<PATH>\", line 99, in __exit__\n    self.gen.throw(type, value, traceback)\n  File \"<PATH>\", line <NUM>, in _build_resources\n    instance=instance)\nMessage: 'Instance failed to spawn'\nArguments: ()\n--- Logging error ---\nTraceback (most recent call last):\n  File \"<PATH>\", line <NUM>, in _create_guest_with_network\n    post_xml_callback=post_xml_callback)\n  File \"<PATH>\", line 88, in __exit__\n    next(self.gen)\n  File \"<PATH>\", line 482, in wait_for_instance_event\n    actual_event = event.wait()\n  File \"<PATH>\", line 125, in wait\n    result = hub.switch()\n  File \"<PATH>\", line 313, in switch\n    return self.greenlet.switch()\neventlet.timeout.Timeout: 300 seconds\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<PATH>\", line <NUM>, in _build_resources\n    yield resources\n  File \"<PATH>\", line <NUM>, in _build_and_run_instance\n    accel_info=accel_info)\n  File \"<PATH>\", line <NUM>, in spawn\n    cleanup_instance_disks=created_disks)\n  File \"<PATH>\", line <NUM>, in _create_guest_with_network\n    raise exception.VirtualInterfaceCreateException()\nnova.exception.VirtualInterfaceCreateException: Virtual Interface creation failed\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<PATH>\", line 994, in emit\n    msg = self.format(record)\n  File \"<PATH>\", line 156, in format\n    return logging.StreamHandler.format(self, record) + record.reset_color\n  File \"<PATH>\", line 840, in format\n    return fmt.format(record)\n  File \"<PATH>\", line 476, in format\n    record.exc_text = self.formatException(record.exc_info, record)\n  File \"<PATH>\", line 540, in formatException\n    pl = self.conf.logging_exception_prefix % record.__dict__\nKeyError: 'message'\nCall stack:\n  File \"<PATH>\", line 686, in context_wrapper\n    func(*args, **kwargs)\n  File \"<PATH>\", line 360, in inner\n    return f(*args, **kwargs)\n  File \"<PATH>\", line <NUM>, in _locked_do_build_and_run_instance\n    result = self._do_build_and_run_instance(*args, **kwargs)\n  File \"<PATH>\", line 69, in wrapped\n    return f(self, context, *args, **kw)\n  File \"<PATH>\", line 157, in decorated_function\n    return function(self, context, *args, **kwargs)\n  File \"<PATH>\", line <NUM>, in decorated_function\n    return function(self, context, *args, **kwargs)\n  File \"<PATH>\", line 203, in decorated_function\n    return function(self, context, *args, **kwargs)\n  File \"<PATH>\", line <NUM>, in _do_build_and_run_instance\n    filter_properties, request_spec, accel_uuids)\n  File \"<PATH>\", line <NUM>, in _build_and_run_instance\n    instance=instance)\n  File \"<PATH>\", line 99, in __exit__\n    self.gen.throw(type, value, traceback)\n  File \"<PATH>\", line <NUM>, in _build_resources\n    instance=instance)\nMessage: 'Instance failed to spawn'\nArguments: ()\n--- Logging error ---\nTraceback (most recent call last):\n  File \"<PATH>\", line <NUM>, in _create_guest_with_network\n    post_xml_callback=post_xml_callback)\n  File \"<PATH>\", line 88, in __exit__\n    next(self.gen)\n  File \"<PATH>\", line 482, in wait_for_instance_event\n    actual_event = event.wait()\n  File \"<PATH>\", line 125, in wait\n    result = hub.switch()\n  File \"<PATH>\", line 313, in switch\n    return self.greenlet.switch()\neventlet.timeout.Timeout: 300 seconds\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<PATH>\", line <NUM>, in _build_and_run_instance\n    accel_info=accel_info)",
+          "weight": -0.3661697517376316
+        },
+        {
+          "feature": "tpl_832efa0c",
+          "kind": "template",
+          "template_id": "832efa0c",
+          "template_text": "Took 3.06 seconds to deallocate network for instance.",
+          "weight": -0.3661664161419241
+        },
+        {
+          "feature": "tpl_428a3b40",
+          "kind": "template",
+          "template_id": "428a3b40",
+          "template_text": "Deleting instance files <PATH>",
+          "weight": -0.35390367179524823
+        },
+        {
+          "feature": "tpl_c3072d13",
+          "kind": "template",
+          "template_id": "c3072d13",
+          "template_text": "Took 0.23 seconds to deallocate network for instance.",
+          "weight": -0.34091783528651365
+        },
+        {
+          "feature": "tpl_4d69fb36",
+          "kind": "template",
+          "template_id": "4d69fb36",
+          "template_text": "Terminating instance",
+          "weight": -0.33425059060305284
+        },
+        {
+          "feature": "kw_Failed to allocate network",
+          "kind": "keyword",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.2479466823827998
+        },
+        {
+          "feature": "tpl_e4ad4519",
+          "kind": "template",
+          "template_id": "e4ad4519",
+          "template_text": "Failed to allocate network(s): nova.exception.VirtualInterfaceCreateException: Virtual Interface creation failed",
+          "weight": -0.24706651036905106
+        }
+      ],
+      "top_positive": [
+        {
+          "feature": "log_error_cnt",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": 1.7372061735973139
+        },
+        {
+          "feature": "tpl_23c6f986",
+          "kind": "template",
+          "template_id": "23c6f986",
+          "template_text": "During sync_power_state the instance has a pending task (spawning). Skip.",
+          "weight": 0.9837482397099262
+        },
+        {
+          "feature": "kw_qemu unexpectedly closed the monitor",
+          "kind": "keyword",
+          "template_id": null,
+          "template_text": null,
+          "weight": 0.7727506415485769
+        },
+        {
+          "feature": "tpl_00335c46",
+          "kind": "template",
+          "template_id": "00335c46",
+          "template_text": "Took 0.11 seconds to destroy the instance on the hypervisor.",
+          "weight": 0.7303954776813668
+        },
+        {
+          "feature": "tpl_62f854e0",
+          "kind": "template",
+          "template_id": "62f854e0",
+          "template_text": "Instance failed to spawn: nova.exception.FlavorDiskSmallerThanImage: Flavor's disk is too small for requested image. Flavor disk is <NUM> bytes, image is <NUM> bytes.",
+          "weight": 0.713094478938295
+        },
+        {
+          "feature": "kw_FlavorDiskSmallerThanImage",
+          "kind": "keyword",
+          "template_id": null,
+          "template_text": null,
+          "weight": 0.713094478938295
+        },
+        {
+          "feature": "tpl_0aa941b3",
+          "kind": "template",
+          "template_id": "0aa941b3",
+          "template_text": "Build of instance <UUID> aborted: Flavor's disk is too small for requested image. Flavor disk is <NUM> bytes, image is <NUM> bytes.: nova.exception.BuildAbortException: Build of instance <UUID> aborted: Flavor's disk is too small for requested image. Flavor disk is <NUM> bytes, image is <NUM> bytes.",
+          "weight": 0.713094478938295
+        },
+        {
+          "feature": "tpl_a03daa0f",
+          "kind": "template",
+          "template_id": "a03daa0f",
+          "template_text": "VM Stopped (Lifecycle Event)",
+          "weight": 0.7111931624873441
+        },
+        {
+          "feature": "tpl_05e0665b",
+          "kind": "template",
+          "template_id": "05e0665b",
+          "template_text": "Took 0.83 seconds to deallocate network for instance.",
+          "weight": 0.6727549005473418
+        },
+        {
+          "feature": "tpl_0bc3f16d",
+          "kind": "template",
+          "template_id": "0bc3f16d",
+          "template_text": "error during stop() in sync_power_state.: nova.exception_Remote.UnexpectedTaskStateError_Remote: Conflict updating instance <UUID>. Expected: {'task_state': [None]}. Actual: {'task_state': 'powering-off'}",
+          "weight": 0.6616749143815813
+        },
+        {
+          "feature": "tpl_683d6709",
+          "kind": "template",
+          "template_id": "683d6709",
+          "template_text": "Took 1.84 seconds to deallocate network for instance.",
+          "weight": 0.6353584156488955
+        },
+        {
+          "feature": "tpl_9d705987",
+          "kind": "template",
+          "template_id": "9d705987",
+          "template_text": "Instance failed to spawn: libvirt.libvirtError: internal error: qemu unexpectedly closed the monitor: <NUM>-04-12T17:06:49.552745Z qemu-system-x86_64: terminating on signal 15 from pid <NUM> (<PATH>)",
+          "weight": 0.6349405030317017
+        },
+        {
+          "feature": "tpl_5de9f186",
+          "kind": "template",
+          "template_id": "5de9f186",
+          "template_text": "Failed to build and run instance: libvirt.libvirtError: internal error: qemu unexpectedly closed the monitor: <NUM>-04-12T17:06:49.552745Z qemu-system-x86_64: terminating on signal 15 from pid <NUM> (<PATH>)",
+          "weight": 0.6349405030317017
+        },
+        {
+          "feature": "tpl_de1fc491",
+          "kind": "template",
+          "template_id": "de1fc491",
+          "template_text": "Failed to start libvirt guest: libvirt.libvirtError: internal error: qemu unexpectedly closed the monitor: <NUM>-04-12T17:06:49.552745Z qemu-system-x86_64: terminating on signal 15 from pid <NUM> (<PATH>)",
+          "weight": 0.6349405030317017
+        },
+        {
+          "feature": "tpl_e9500b91",
+          "kind": "template",
+          "template_id": "e9500b91",
+          "template_text": "Took 0.12 seconds to destroy the instance on the hypervisor.",
+          "weight": 0.5742358797169252
+        }
+      ]
+    },
+    "2": {
+      "top_negative": [
+        {
+          "feature": "kw_Failed to start libvirt guest",
+          "kind": "keyword",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.37259325724160275
+        },
+        {
+          "feature": "warn_cnt",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.3518332694184573
+        },
+        {
+          "feature": "kw_qemu unexpectedly closed the monitor",
+          "kind": "keyword",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.3203540265239948
+        },
+        {
+          "feature": "tpl_23c6f986",
+          "kind": "template",
+          "template_id": "23c6f986",
+          "template_text": "During sync_power_state the instance has a pending task (spawning). Skip.",
+          "weight": -0.18673490245699853
+        },
+        {
+          "feature": "tpl_cb12e456",
+          "kind": "template",
+          "template_id": "cb12e456",
+          "template_text": "Instance failed block device setup: nova.exception.VolumeNotCreated: Volume <UUID> did not finish being created even after we waited 0 seconds or 1 attempts. And its status is error.",
+          "weight": -0.16288156082336036
+        },
+        {
+          "feature": "tpl_7a088eb2",
+          "kind": "template",
+          "template_id": "7a088eb2",
+          "template_text": "Build of instance <UUID> aborted: Volume <UUID> did not finish being created even after we waited 0 seconds or 1 attempts. And its status is error.: nova.exception.BuildAbortException: Build of instance <UUID> aborted: Volume <UUID> did not finish being created even after we waited 0 seconds or 1 attempts. And its status is error.",
+          "weight": -0.16288156082336036
+        },
+        {
+          "feature": "tpl_87ff83ed",
+          "kind": "template",
+          "template_id": "87ff83ed",
+          "template_text": "Booting with volume-backed-image <UUID> at <PATH>",
+          "weight": -0.16288156082336036
+        },
+        {
+          "feature": "tpl_b07b829e",
+          "kind": "template",
+          "template_id": "b07b829e",
+          "template_text": "Ignoring supplied device name: <PATH> Libvirt can't honour user-supplied dev names",
+          "weight": -0.16288156082336036
+        },
+        {
+          "feature": "info_cnt",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.16168922240665615
+        },
+        {
+          "feature": "tpl_00335c46",
+          "kind": "template",
+          "template_id": "00335c46",
+          "template_text": "Took 0.11 seconds to destroy the instance on the hypervisor.",
+          "weight": -0.16166393537909976
+        },
+        {
+          "feature": "tpl_05e0665b",
+          "kind": "template",
+          "template_id": "05e0665b",
+          "template_text": "Took 0.83 seconds to deallocate network for instance.",
+          "weight": -0.15999005324269872
+        },
+        {
+          "feature": "tpl_0aa941b3",
+          "kind": "template",
+          "template_id": "0aa941b3",
+          "template_text": "Build of instance <UUID> aborted: Flavor's disk is too small for requested image. Flavor disk is <NUM> bytes, image is <NUM> bytes.: nova.exception.BuildAbortException: Build of instance <UUID> aborted: Flavor's disk is too small for requested image. Flavor disk is <NUM> bytes, image is <NUM> bytes.",
+          "weight": -0.1533397701241139
+        },
+        {
+          "feature": "tpl_62f854e0",
+          "kind": "template",
+          "template_id": "62f854e0",
+          "template_text": "Instance failed to spawn: nova.exception.FlavorDiskSmallerThanImage: Flavor's disk is too small for requested image. Flavor disk is <NUM> bytes, image is <NUM> bytes.",
+          "weight": -0.1533397701241139
+        },
+        {
+          "feature": "kw_FlavorDiskSmallerThanImage",
+          "kind": "keyword",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.1533397701241139
+        },
+        {
+          "feature": "tpl_6a8bbff6",
+          "kind": "template",
+          "template_id": "6a8bbff6",
+          "template_text": "Received unexpected event network-vif-unplugged-<UUID> for instance with vm_state building and task_state spawning.",
+          "weight": -0.11962723530301025
+        }
+      ],
+      "top_positive": [
+        {
+          "feature": "kw_VirtualInterfaceCreateException",
+          "kind": "keyword",
+          "template_id": null,
+          "template_text": null,
+          "weight": 1.5250443001589253
+        },
+        {
+          "feature": "tpl_e4ad4519",
+          "kind": "template",
+          "template_id": "e4ad4519",
+          "template_text": "Failed to allocate network(s): nova.exception.VirtualInterfaceCreateException: Virtual Interface creation failed",
+          "weight": 0.8024743271405651
+        },
+        {
+          "feature": "tpl_5a357ef2",
+          "kind": "template",
+          "template_id": "5a357ef2",
+          "template_text": "Instance failed to spawn: nova.exception.VirtualInterfaceCreateException: Virtual Interface creation failed",
+          "weight": 0.8024743271405651
+        },
+        {
+          "feature": "kw_Failed to allocate network",
+          "kind": "keyword",
+          "template_id": null,
+          "template_text": null,
+          "weight": 0.7999617309133549
+        },
+        {
+          "feature": "tpl_1cd7d3e7",
+          "kind": "template",
+          "template_id": "1cd7d3e7",
+          "template_text": "Build of instance <UUID> aborted: Failed to allocate the network(s), not rescheduling.: nova.exception.BuildAbortException: Build of instance <UUID> aborted: Failed to allocate the network(s), not rescheduling.",
+          "weight": 0.7994969140202042
+        },
+        {
+          "feature": "error_cnt",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": 0.5170090339851345
+        },
+        {
+          "feature": "kw_BuildAbortException",
+          "kind": "keyword",
+          "template_id": null,
+          "template_text": null,
+          "weight": 0.48327558307271395
+        },
+        {
+          "feature": "log_error_cnt",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": 0.4557141965488167
+        },
+        {
+          "feature": "tpl_3f0cc10b",
+          "kind": "template",
+          "template_id": "3f0cc10b",
+          "template_text": "Deletion of <PATH> complete",
+          "weight": 0.4420755354337984
+        },
+        {
+          "feature": "tpl_a03daa0f",
+          "kind": "template",
+          "template_id": "a03daa0f",
+          "template_text": "VM Stopped (Lifecycle Event)",
+          "weight": 0.22544107826205567
+        },
+        {
+          "feature": "tpl_7bb1bd13",
+          "kind": "template",
+          "template_id": "7bb1bd13",
+          "template_text": "VM Started (Lifecycle Event)",
+          "weight": 0.19464747303454133
+        },
+        {
+          "feature": "tpl_fbd432b6",
+          "kind": "template",
+          "template_id": "fbd432b6",
+          "template_text": "VM Paused (Lifecycle Event)",
+          "weight": 0.19464747303454133
+        },
+        {
+          "feature": "tpl_b97c6614",
+          "kind": "template",
+          "template_id": "b97c6614",
+          "template_text": "Took 0.18 seconds to destroy the instance on the hypervisor.",
+          "weight": 0.11805526566425126
+        },
+        {
+          "feature": "tpl_428a3b40",
+          "kind": "template",
+          "template_id": "428a3b40",
+          "template_text": "Deleting instance files <PATH>",
+          "weight": 0.10145845771295305
+        },
+        {
+          "feature": "tpl_c4268e60",
+          "kind": "template",
+          "template_id": "c4268e60",
+          "template_text": "Creating image",
+          "weight": 0.08359243906462493
+        }
+      ]
+    },
+    "3": {
+      "top_negative": [
+        {
+          "feature": "log_error_cnt",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": -1.4073289735865488
+        },
+        {
+          "feature": "tpl_af8954af",
+          "kind": "template",
+          "template_id": "af8954af",
+          "template_text": "Instance spawned successfully.",
+          "weight": -1.106842177753453
+        },
+        {
+          "feature": "kw_BuildAbortException",
+          "kind": "keyword",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.8938736667515538
+        },
+        {
+          "feature": "info_cnt",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.8238623438771691
+        },
+        {
+          "feature": "tpl_a03daa0f",
+          "kind": "template",
+          "template_id": "a03daa0f",
+          "template_text": "VM Stopped (Lifecycle Event)",
+          "weight": -0.7055556868230306
+        },
+        {
+          "feature": "tpl_0bc3f16d",
+          "kind": "template",
+          "template_id": "0bc3f16d",
+          "template_text": "error during stop() in sync_power_state.: nova.exception_Remote.UnexpectedTaskStateError_Remote: Conflict updating instance <UUID>. Expected: {'task_state': [None]}. Actual: {'task_state': 'powering-off'}",
+          "weight": -0.6666346522884314
+        },
+        {
+          "feature": "tpl_bce59009",
+          "kind": "template",
+          "template_id": "bce59009",
+          "template_text": "Neutron deleted interface <UUID>; detaching it from the instance and deleting it from the info cache",
+          "weight": -0.6490608673260401
+        },
+        {
+          "feature": "kw_VirtualInterfaceCreateException",
+          "kind": "keyword",
+          "template_id": null,
+          "template_text": null,
+          "weight": -0.6451068392023335
+        },
+        {
+          "feature": "tpl_683d6709",
+          "kind": "template",
+          "template_id": "683d6709",
+          "template_text": "Took 1.84 seconds to deallocate network for instance.",
+          "weight": -0.6272965894977695
+        },
+        {
+          "feature": "tpl_9d705987",
+          "kind": "template",
+          "template_id": "9d705987",
+          "template_text": "Instance failed to spawn: libvirt.libvirtError: internal error: qemu unexpectedly closed the monitor: <NUM>-04-12T17:06:49.552745Z qemu-system-x86_64: terminating on signal 15 from pid <NUM> (<PATH>)",
+          "weight": -0.619897703746116
+        },
+        {
+          "feature": "tpl_5de9f186",
+          "kind": "template",
+          "template_id": "5de9f186",
+          "template_text": "Failed to build and run instance: libvirt.libvirtError: internal error: qemu unexpectedly closed the monitor: <NUM>-04-12T17:06:49.552745Z qemu-system-x86_64: terminating on signal 15 from pid <NUM> (<PATH>)",
+          "weight": -0.619897703746116
+        },
+        {
+          "feature": "tpl_de1fc491",
+          "kind": "template",
+          "template_id": "de1fc491",
+          "template_text": "Failed to start libvirt guest: libvirt.libvirtError: internal error: qemu unexpectedly closed the monitor: <NUM>-04-12T17:06:49.552745Z qemu-system-x86_64: terminating on signal 15 from pid <NUM> (<PATH>)",
+          "weight": -0.619897703746116
+        },
+        {
+          "feature": "tpl_e4ad4519",
+          "kind": "template",
+          "template_id": "e4ad4519",
+          "template_text": "Failed to allocate network(s): nova.exception.VirtualInterfaceCreateException: Virtual Interface creation failed",
+          "weight": -0.5786897414709583
+        },
+        {
+          "feature": "tpl_5a357ef2",
+          "kind": "template",
+          "template_id": "5a357ef2",
+          "template_text": "Instance failed to spawn: nova.exception.VirtualInterfaceCreateException: Virtual Interface creation failed",
+          "weight": -0.5786897414709583
+        },
+        {
+          "feature": "tpl_e9500b91",
+          "kind": "template",
+          "template_id": "e9500b91",
+          "template_text": "Took 0.12 seconds to destroy the instance on the hypervisor.",
+          "weight": -0.5383579987358312
+        }
+      ],
+      "top_positive": [
+        {
+          "feature": "kw_Failed to start libvirt guest",
+          "kind": "keyword",
+          "template_id": null,
+          "template_text": null,
+          "weight": 1.2250117101666764
+        },
+        {
+          "feature": "warn_cnt",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": 1.1833123834434685
+        },
+        {
+          "feature": "tpl_86e61357",
+          "kind": "template",
+          "template_id": "86e61357",
+          "template_text": "Instance destroyed successfully.",
+          "weight": 0.7883215809300359
+        },
+        {
+          "feature": "tpl_3de0f3e0",
+          "kind": "template",
+          "template_id": "3de0f3e0",
+          "template_text": "Took 7.73 seconds to spawn the instance on the hypervisor.",
+          "weight": 0.7772735919064371
+        },
+        {
+          "feature": "tpl_e32dc0e7",
+          "kind": "template",
+          "template_id": "e32dc0e7",
+          "template_text": "Took 8.99 seconds to build instance.",
+          "weight": 0.7772735919064371
+        },
+        {
+          "feature": "tpl_7bb1bd13",
+          "kind": "template",
+          "template_id": "7bb1bd13",
+          "template_text": "VM Started (Lifecycle Event)",
+          "weight": 0.7246333653991877
+        },
+        {
+          "feature": "tpl_fbd432b6",
+          "kind": "template",
+          "template_id": "fbd432b6",
+          "template_text": "VM Paused (Lifecycle Event)",
+          "weight": 0.7246333653991877
+        },
+        {
+          "feature": "tpl_5a910f97",
+          "kind": "template",
+          "template_id": "5a910f97",
+          "template_text": "Received unexpected event network-vif-unplugged-<UUID> for instance with vm_state active and task_state None.",
+          "weight": 0.6667967326938403
+        },
+        {
+          "feature": "tpl_900f315e",
+          "kind": "template",
+          "template_id": "900f315e",
+          "template_text": "Instance is already powered off in the hypervisor when stop is called.",
+          "weight": 0.5949098377707008
+        },
+        {
+          "feature": "total_records",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": 0.5473512327070141
+        },
+        {
+          "feature": "tpl_3f0cc10b",
+          "kind": "template",
+          "template_id": "3f0cc10b",
+          "template_text": "Deletion of <PATH> complete",
+          "weight": 0.47652322751398346
+        },
+        {
+          "feature": "log_total_records",
+          "kind": "scalar",
+          "template_id": null,
+          "template_text": null,
+          "weight": 0.464211852763443
+        },
+        {
+          "feature": "tpl_30a01980",
+          "kind": "template",
+          "template_id": "30a01980",
+          "template_text": "During sync_power_state the instance has a pending task (deleting). Skip.",
+          "weight": 0.4318951307523369
+        },
+        {
+          "feature": "tpl_11ea3790",
+          "kind": "template",
+          "template_id": "11ea3790",
+          "template_text": "Took 0.14 seconds to destroy the instance on the hypervisor.",
+          "weight": 0.4099291613054236
+        },
+        {
+          "feature": "tpl_8719aa7b",
+          "kind": "template",
+          "template_id": "8719aa7b",
+          "template_text": "Took 0.15 seconds to destroy the instance on the hypervisor.",
+          "weight": 0.4019019182869443
+        }
+      ]
+    }
+  },
+  "topk": 15
+}
