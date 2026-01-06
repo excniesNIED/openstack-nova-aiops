@@ -84,7 +84,7 @@ const statusText = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
+  padding: 0.9rem 1.25rem;
   background: linear-gradient(180deg, rgba(10, 20, 40, 0.95) 0%, rgba(10, 20, 40, 0.8) 100%);
   border-bottom: 1px solid var(--border-glow);
   position: relative;
@@ -162,11 +162,12 @@ const statusText = () => {
 .status-bar {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  padding: 0.5rem 1.5rem;
+  gap: 1.1rem;
+  padding: 0.45rem 1.1rem;
   background: rgba(0, 240, 255, 0.05);
   border: 1px solid rgba(0, 240, 255, 0.2);
   border-radius: 20px;
+  flex-wrap: wrap;
 }
 
 .status-item {
@@ -259,5 +260,31 @@ const statusText = () => {
   border-color: var(--primary-color);
   color: var(--primary-color);
   box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+}
+
+@media (max-width: 980px) {
+  .dashboard-header {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .header-center {
+    order: 3;
+    flex: 0 0 100%;
+    justify-content: flex-start;
+  }
+
+  .status-bar {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .divider {
+    display: none;
+  }
+
+  .time-display {
+    margin-right: 0;
+  }
 }
 </style>
