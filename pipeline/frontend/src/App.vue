@@ -394,7 +394,7 @@ onUnmounted(() => {
 
 .dashboard-content {
   flex: 1;
-  padding: 1rem;
+  padding: clamp(0.75rem, 1.5vw, 1.25rem);
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -531,7 +531,7 @@ onUnmounted(() => {
 
 .settings-actions.split {
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
 }
@@ -557,5 +557,30 @@ onUnmounted(() => {
 .test-meta .err {
   margin-left: 0.5rem;
   color: #ff4444;
+}
+
+@media (max-width: 640px) {
+  .settings-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-row .label {
+    width: auto;
+  }
+
+  .settings-actions.split {
+    gap: 0.75rem;
+  }
+
+  .settings-actions .left,
+  .settings-actions .right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .test-meta {
+    width: 100%;
+  }
 }
 </style>
