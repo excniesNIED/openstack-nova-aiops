@@ -257,7 +257,7 @@ onMounted(async () => {
           <d-button
             color="primary"
             variant="solid"
-            size="lg"
+            size="md"
             :loading="starting"
             :disabled="running || !logName.trim()"
             @click="startNow"
@@ -266,7 +266,7 @@ onMounted(async () => {
           </d-button>
           <d-button
             variant="outline"
-            size="lg"
+            size="md"
             :loading="stopping"
             :disabled="!running"
             @click="stopNow"
@@ -275,7 +275,7 @@ onMounted(async () => {
           </d-button>
           <d-button
             variant="text"
-            size="lg"
+            size="md"
             :disabled="!running"
             @click="emit('entered')"
           >
@@ -331,7 +331,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 1.25rem;
+  padding: clamp(1rem, 2vw, 1.5rem);
   width: 100%;
   max-width: 1440px;
   margin: 0 auto;
@@ -342,7 +342,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1.25rem 1.5rem;
+  padding: 1rem 1.25rem;
   background: linear-gradient(180deg, rgba(10, 20, 40, 0.95) 0%, rgba(10, 20, 40, 0.8) 100%);
   border: 1px solid var(--border-glow);
   border-radius: 12px;
@@ -356,8 +356,8 @@ onMounted(async () => {
 }
 
 .brand-logo {
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   filter: drop-shadow(0 0 12px rgba(0, 240, 255, 0.35));
 }
 
@@ -384,11 +384,36 @@ onMounted(async () => {
   color: var(--text-secondary);
 }
 
+.welcome :deep(.devui-input),
+.welcome :deep(.devui-select),
+.welcome :deep(.devui-input-number),
+.welcome :deep(.devui-dropdown-origin),
+.welcome :deep(.devui-switch) {
+  color: var(--text-primary);
+}
+
+.welcome :deep(.devui-input__wrapper),
+.welcome :deep(.devui-select .devui-select-input),
+.welcome :deep(.devui-input-number),
+.welcome :deep(.devui-select-input),
+.welcome :deep(.devui-input input),
+.welcome :deep(.devui-input-number input) {
+  background: rgba(10, 20, 40, 0.92);
+  border-color: rgba(0, 240, 255, 0.22);
+}
+
+.welcome :deep(.devui-tag),
+.welcome :deep(.devui-tag-primary),
+.welcome :deep(.devui-tag-success),
+.welcome :deep(.devui-tag-danger) {
+  border-color: rgba(0, 240, 255, 0.22);
+}
+
 .grid {
   flex: 1;
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: 1.25rem;
+  gap: 1.1rem;
 }
 
 .panel {
@@ -406,10 +431,10 @@ onMounted(async () => {
 
 .panel-title {
   margin: 0;
-  font-size: 1.1rem;
-  line-height: 1.3;
+  font-size: 1.15rem;
+  line-height: 1.35;
   color: var(--primary-color);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
 }
 
 .panel-meta {
@@ -421,20 +446,21 @@ onMounted(async () => {
 .form {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.6rem;
 }
 
 .row {
   display: grid;
-  grid-template-columns: 120px 1fr;
-  align-items: center;
-  gap: 1.25rem;
+  grid-template-columns: minmax(86px, 110px) minmax(0, 1fr);
+  align-items: start;
+  gap: 0.9rem;
 }
 
 .label {
   color: var(--text-secondary);
   font-size: 0.85rem;
   line-height: 1.2;
+  padding-top: 0.25rem;
 }
 
 .inline {
@@ -447,6 +473,7 @@ onMounted(async () => {
 .hint {
   color: var(--text-secondary);
   font-size: 0.8rem;
+  line-height: 1.35;
 }
 
 .mono {
@@ -464,7 +491,7 @@ onMounted(async () => {
 }
 
 .actions {
-  margin-top: 0.25rem;
+  margin-top: 0.35rem;
   display: flex;
   gap: 0.9rem;
   flex-wrap: wrap;
@@ -491,7 +518,7 @@ onMounted(async () => {
 .v {
   color: var(--text-primary);
   font-size: 0.85rem;
-  max-width: 60%;
+  max-width: 68%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -523,6 +550,32 @@ onMounted(async () => {
 @media (max-width: 1320px) {
   .grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .label {
+    padding-top: 0;
+  }
+
+  .kv {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .v {
+    max-width: 100%;
   }
 }
 </style>
