@@ -55,6 +55,7 @@ class ReplayController:
         self.cfg = cfg
         self._thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
+        self._pause = threading.Event()
 
         self._lock = threading.Lock()
         self._running = False
@@ -83,6 +84,7 @@ class ReplayController:
 
             log_path = self._resolve_log(log_name)
             self._stop.clear()
+            self._pause.clear()
             self._running = True
             self._started_at = time.time()
             self._finished_at = None
@@ -97,7 +99,17 @@ class ReplayController:
             self._thread = threading.Thread(target=self._run, name="ReplayController", daemon=True)
             self._thread.start()
 
+    def pause(self) -> None:
+        with self._lock:
+            if not self._running:
+                return
+            self._pause.set()
+
+    def resume(self) -> None:
+        self._pause.clear()
+
     def stop(self) -> None:
+        self._pause.clear()
         self._stop.set()
         t = self._thread
         if t:
@@ -107,6 +119,7 @@ class ReplayController:
         with self._lock:
             return {
                 "running": self._running,
+                "paused": self._pause.is_set(),
                 "dataset_id": self._dataset_id,
                 "log_path": self._log_path,
                 "rate": self._rate,
@@ -186,6 +199,9 @@ class ReplayController:
                 for start_ln, end_ln, record in iter_merged_records(log_path):
                     if self._stop.is_set():
                         break
+                    while self._pause.is_set() and not self._stop.is_set():
+                        time.sleep(0.25)
+                        next_ts = time.time()
 
                     now_ms = int(time.time() * 1000)
                     msg = {

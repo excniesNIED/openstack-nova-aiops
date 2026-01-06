@@ -158,6 +158,16 @@ def create_app() -> FastAPI:
     def control_logs():
         return replay.list_logs()
 
+    @app.post("/control/pause")
+    def control_pause():
+        replay.pause()
+        return replay.status()
+
+    @app.post("/control/resume")
+    def control_resume():
+        replay.resume()
+        return replay.status()
+
     @app.post("/control/start")
     def control_start(req: StartReplayRequest):
         # Common datasets used in this project; caller may still pass an explicit log_name.
@@ -171,6 +181,35 @@ def create_app() -> FastAPI:
         log_name = (req.log_name or "").strip() or dataset_to_log.get(req.dataset_id)
         if not log_name:
             raise HTTPException(status_code=400, detail="log_name is required (or use a known dataset_id)")
+        try:
+            replay.start(
+                dataset_id=req.dataset_id,
+                log_name=log_name,
+                rate=req.rate,
+                loop=req.loop,
+                max_records=req.max_records,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return replay.status()
+
+    @app.post("/control/switch")
+    def control_switch(req: StartReplayRequest):
+        """
+        Switch dataset/log by restarting the replay controller.
+        """
+        dataset_to_log = {
+            "sample": "openstack-nova-sample.log",
+            "normal": "openstack-nova-normal-vm-create.log",
+            "fault1": "openstack-vm-destroy-immediately-after-create.log",
+            "fault2": "openstack-nova-dhcpoff.log",
+            "fault3": "openstack-nova-undefine-vm-after-create.log",
+        }
+        log_name = (req.log_name or "").strip() or dataset_to_log.get(req.dataset_id)
+        if not log_name:
+            raise HTTPException(status_code=400, detail="log_name is required (or use a known dataset_id)")
+
+        replay.stop()
         try:
             replay.start(
                 dataset_id=req.dataset_id,
