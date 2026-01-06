@@ -20,6 +20,7 @@ const logsLoading = ref(false)
 const logs = ref<Record<string, string>>({})
 
 const datasetOptions = [
+  { value: '', label: '不选择（自定义）', defaultLog: '' },
   { value: 'sample', label: '示例（sample）', defaultLog: 'openstack-nova-sample.log' },
   { value: 'normal', label: '正常创建（normal）', defaultLog: 'openstack-nova-normal-vm-create.log' },
   { value: 'fault1', label: '创建后立即销毁（fault1）', defaultLog: 'openstack-vm-destroy-immediately-after-create.log' },
@@ -27,8 +28,8 @@ const datasetOptions = [
   { value: 'fault3', label: '创建后 undefine（fault3）', defaultLog: 'openstack-nova-undefine-vm-after-create.log' },
 ]
 
-const datasetId = ref(datasetOptions[0]!.value)
-const logName = ref(datasetOptions[0]!.defaultLog)
+const datasetId = ref(window.localStorage.getItem('replay.datasetId') ?? datasetOptions[1]!.value)
+const logName = ref(window.localStorage.getItem('replay.logName') ?? datasetOptions[1]!.defaultLog)
 const rate = ref<number>(50)
 const loop = ref<boolean>(false)
 const maxRecords = ref<number>(0)
@@ -64,6 +65,8 @@ const onDatasetChange = (v: string | number | (string | number)[]) => {
   datasetId.value = id
   const opt = datasetOptions.find((o) => o.value === id)
   if (opt) logName.value = opt.defaultLog
+  window.localStorage.setItem('replay.datasetId', datasetId.value)
+  window.localStorage.setItem('replay.logName', logName.value)
 }
 
 const starting = ref(false)
@@ -72,12 +75,14 @@ const startNow = async () => {
   statusError.value = null
   try {
     status.value = await startReplay(props.apiBaseUrl, {
-      dataset_id: datasetId.value,
+      dataset_id: datasetId.value || 'custom',
       log_name: logName.value.trim(),
       rate: Number.isFinite(rate.value) ? rate.value : 50,
       loop: loop.value,
       max_records: maxRecords.value,
     })
+    window.localStorage.setItem('replay.datasetId', datasetId.value)
+    window.localStorage.setItem('replay.logName', logName.value)
   } catch (e) {
     statusError.value = e instanceof Error ? e.message : String(e)
   } finally {
@@ -397,9 +402,16 @@ onMounted(async () => {
 .welcome :deep(.devui-input-number),
 .welcome :deep(.devui-select-input),
 .welcome :deep(.devui-input input),
-.welcome :deep(.devui-input-number input) {
+.welcome :deep(.devui-input-number input),
+.welcome :deep(.devui-select input) {
   background: rgba(10, 20, 40, 0.92);
   border-color: rgba(0, 240, 255, 0.22);
+}
+
+.welcome :deep(.devui-input input::placeholder),
+.welcome :deep(.devui-input-number input::placeholder),
+.welcome :deep(.devui-select input::placeholder) {
+  color: rgba(224, 224, 255, 0.55);
 }
 
 .welcome :deep(.devui-tag),
@@ -446,21 +458,23 @@ onMounted(async () => {
 .form {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.85rem;
 }
 
 .row {
   display: grid;
-  grid-template-columns: minmax(86px, 110px) minmax(0, 1fr);
+  grid-template-columns: minmax(110px, 132px) minmax(0, 1fr);
   align-items: start;
   gap: 0.9rem;
 }
 
 .label {
   color: var(--text-secondary);
-  font-size: 0.85rem;
-  line-height: 1.2;
-  padding-top: 0.25rem;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  padding-top: 0.35rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .inline {
@@ -472,8 +486,8 @@ onMounted(async () => {
 
 .hint {
   color: var(--text-secondary);
-  font-size: 0.8rem;
-  line-height: 1.35;
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
 .mono {
@@ -497,31 +511,62 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
+.welcome :deep(.devui-btn),
+.welcome :deep(.devui-btn-outline),
+.welcome :deep(.devui-btn-text),
+.welcome :deep(.devui-btn-primary) {
+  color: var(--text-primary);
+}
+
+.welcome :deep(.devui-btn-primary) {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.9), rgba(0, 240, 255, 0.6));
+  border-color: rgba(0, 240, 255, 0.65);
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.18);
+}
+
+.welcome :deep(.devui-btn-primary:hover:not(:disabled)) {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 1), rgba(0, 240, 255, 0.7));
+  border-color: rgba(0, 240, 255, 0.85);
+}
+
+.welcome :deep(.devui-btn-outline) {
+  background: rgba(10, 20, 40, 0.55);
+  border-color: rgba(0, 240, 255, 0.28);
+}
+
+.welcome :deep(.devui-btn-text) {
+  color: rgba(224, 224, 255, 0.9);
+}
+
 .status {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 0.5rem;
+  gap: 0.7rem;
 }
 
 .kv {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: minmax(96px, 120px) minmax(0, 1fr);
+  align-items: start;
+  gap: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  background: rgba(0, 240, 255, 0.04);
+  border: 1px solid rgba(0, 240, 255, 0.12);
+  border-radius: 10px;
 }
 
 .k {
   color: var(--text-secondary);
   font-size: 0.85rem;
+  line-height: 1.3;
 }
 
 .v {
   color: var(--text-primary);
   font-size: 0.85rem;
-  max-width: 68%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
+  min-width: 0;
+  word-break: break-word;
 }
 
 .tips {
@@ -529,7 +574,8 @@ onMounted(async () => {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding-top: 0.75rem;
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: 0.86rem;
+  line-height: 1.55;
 }
 
 .tip-title {
@@ -544,7 +590,7 @@ onMounted(async () => {
 }
 
 .tips li {
-  margin: 0.35rem 0;
+  margin: 0.45rem 0;
 }
 
 @media (max-width: 1320px) {
