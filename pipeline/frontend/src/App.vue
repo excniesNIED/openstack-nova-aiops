@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { getControlStatus, getHealth } from './api/pipeline'
+import { getControlStatus, getHealth, pauseReplay, resumeReplay, startReplay, stopReplay, switchReplay } from './api/pipeline'
 import DashboardHeader from './components/DashboardHeader.vue'
 import StatsCard from './components/StatsCard.vue'
 import RadarChart from './components/RadarChart.vue'
@@ -13,6 +13,7 @@ import AlertsTable from './components/AlertsTable.vue'
 import WelcomeScreen from './components/WelcomeScreen.vue'
 import { useApiBaseUrl } from './composables/useApiBaseUrl'
 import { usePipelineAlerts } from './composables/usePipelineAlerts'
+import type { ControlStatus } from './api/types'
 
 const currentTime = ref(new Date().toLocaleTimeString())
 let timeInterval: number | null = null
@@ -23,7 +24,12 @@ const { alerts, loading, error, apiOk, apiLatencyMs, health, lastUpdatedIso, ref
   limit: 200,
 })
 
-const entered = ref(false)
+const entered = ref(window.localStorage.getItem('dashboard.entered') === '1')
+
+const enterDashboard = () => {
+  entered.value = true
+  window.localStorage.setItem('dashboard.entered', '1')
+}
 
 const settingsOpen = ref(false)
 const apiBaseUrlDraft = ref(apiBaseUrl.value)
@@ -31,6 +37,94 @@ const apiBaseUrlDraft = ref(apiBaseUrl.value)
 const openSettings = () => {
   apiBaseUrlDraft.value = apiBaseUrl.value
   settingsOpen.value = true
+}
+
+const headerDatasetOptions = [
+  { value: 'sample', label: '示例（sample）' },
+  { value: 'normal', label: '正常（normal）' },
+  { value: 'fault1', label: '故障1（destroy）' },
+  { value: 'fault2', label: '故障2（dhcpoff）' },
+  { value: 'fault3', label: '故障3（undefine）' },
+]
+
+const selectedDatasetId = ref<string>(window.localStorage.getItem('replay.datasetId') || 'sample')
+const controlStatus = ref<ControlStatus | null>(null)
+const controlLoading = ref(false)
+const controlError = ref<string | null>(null)
+let controlTimer: number | null = null
+
+const replayRunning = computed(() => controlStatus.value?.running === true)
+const replayPaused = computed(() => controlStatus.value?.paused === true)
+
+const refreshControl = async () => {
+  if (controlLoading.value) return
+  controlLoading.value = true
+  controlError.value = null
+  try {
+    const st = await getControlStatus(apiBaseUrl.value, { timeoutMs: 5000 })
+    controlStatus.value = st
+    if (st?.dataset_id) {
+      window.localStorage.setItem('replay.datasetId', st.dataset_id)
+      if (!selectedDatasetId.value) selectedDatasetId.value = st.dataset_id
+    }
+    if (st?.running) enterDashboard()
+  } catch (e) {
+    controlError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    controlLoading.value = false
+  }
+}
+
+const onHeaderDatasetChange = (datasetId: string) => {
+  selectedDatasetId.value = datasetId
+  window.localStorage.setItem('replay.datasetId', datasetId)
+}
+
+const startHeaderReplay = async () => {
+  controlError.value = null
+  try {
+    controlStatus.value = await startReplay(apiBaseUrl.value, { dataset_id: selectedDatasetId.value || 'sample', rate: 50 })
+    enterDashboard()
+  } catch (e) {
+    controlError.value = e instanceof Error ? e.message : String(e)
+  }
+}
+
+const pauseHeaderReplay = async () => {
+  controlError.value = null
+  try {
+    controlStatus.value = await pauseReplay(apiBaseUrl.value)
+  } catch (e) {
+    controlError.value = e instanceof Error ? e.message : String(e)
+  }
+}
+
+const resumeHeaderReplay = async () => {
+  controlError.value = null
+  try {
+    controlStatus.value = await resumeReplay(apiBaseUrl.value)
+  } catch (e) {
+    controlError.value = e instanceof Error ? e.message : String(e)
+  }
+}
+
+const stopHeaderReplay = async () => {
+  controlError.value = null
+  try {
+    controlStatus.value = await stopReplay(apiBaseUrl.value)
+  } catch (e) {
+    controlError.value = e instanceof Error ? e.message : String(e)
+  }
+}
+
+const switchHeaderReplay = async () => {
+  controlError.value = null
+  try {
+    controlStatus.value = await switchReplay(apiBaseUrl.value, { dataset_id: selectedDatasetId.value || 'sample', rate: 50 })
+    enterDashboard()
+  } catch (e) {
+    controlError.value = e instanceof Error ? e.message : String(e)
+  }
 }
 
 const refreshingNow = ref(false)
@@ -189,19 +283,13 @@ onMounted(() => {
     currentTime.value = new Date().toLocaleTimeString()
   }, 1000)
 
-  void (async () => {
-    try {
-      const st = await getControlStatus(apiBaseUrl.value, { timeoutMs: 5000 })
-      if (st?.running) entered.value = true
-    } catch {
-      // Keep the welcome screen so the user can adjust API Base URL when the backend is unreachable.
-      entered.value = false
-    }
-  })()
+  void refreshControl()
+  controlTimer = window.setInterval(() => void refreshControl(), 3000)
 })
 
 onUnmounted(() => {
   if (timeInterval) clearInterval(timeInterval)
+  if (controlTimer) clearInterval(controlTimer)
 })
 </script>
 
@@ -211,7 +299,7 @@ onUnmounted(() => {
       v-if="!entered"
       :api-base-url="apiBaseUrl"
       :on-open-settings="openSettings"
-      @entered="entered = true"
+      @entered="enterDashboard"
     />
 
     <template v-else>
@@ -221,6 +309,16 @@ onUnmounted(() => {
         :api-ok="apiOk"
         :api-latency-ms="apiLatencyMs"
         :alerts-count="alerts.length"
+        :dataset-id="selectedDatasetId"
+        :dataset-options="headerDatasetOptions"
+        :replay-running="replayRunning"
+        :replay-paused="replayPaused"
+        :on-dataset-change="onHeaderDatasetChange"
+        :on-start-replay="startHeaderReplay"
+        :on-pause-replay="pauseHeaderReplay"
+        :on-resume-replay="resumeHeaderReplay"
+        :on-stop-replay="stopHeaderReplay"
+        :on-switch-replay="switchHeaderReplay"
         :on-open-settings="openSettings"
       />
 
@@ -390,6 +488,41 @@ onUnmounted(() => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+.dashboard :deep(.devui-input),
+.dashboard :deep(.devui-select),
+.dashboard :deep(.devui-input-number),
+.dashboard :deep(.devui-dropdown-origin),
+.dashboard :deep(.devui-switch) {
+  color: var(--text-primary);
+}
+
+.dashboard :deep(.devui-input__wrapper),
+.dashboard :deep(.devui-select .devui-select-input),
+.dashboard :deep(.devui-select-input),
+.dashboard :deep(.devui-input-number),
+.dashboard :deep(.devui-input input),
+.dashboard :deep(.devui-input-number input),
+.dashboard :deep(.devui-select input) {
+  background: rgba(10, 20, 40, 0.92);
+  border-color: rgba(0, 240, 255, 0.22);
+}
+
+.dashboard :deep(.devui-btn-primary) {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.9), rgba(0, 240, 255, 0.6));
+  border-color: rgba(0, 240, 255, 0.65);
+}
+
+.dashboard :deep(.devui-btn-primary:hover:not(:disabled)) {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 1), rgba(0, 240, 255, 0.7));
+  border-color: rgba(0, 240, 255, 0.85);
+}
+
+.dashboard :deep(.devui-input input::placeholder),
+.dashboard :deep(.devui-input-number input::placeholder),
+.dashboard :deep(.devui-select input::placeholder) {
+  color: rgba(224, 224, 255, 0.55);
 }
 
 .dashboard-content {

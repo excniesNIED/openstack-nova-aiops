@@ -5,6 +5,16 @@ const props = defineProps<{
   apiOk: boolean | null
   apiLatencyMs: number | null
   alertsCount: number
+  datasetId?: string
+  datasetOptions?: Array<{ label: string; value: string }>
+  replayRunning?: boolean
+  replayPaused?: boolean
+  onDatasetChange?: (datasetId: string) => void
+  onStartReplay?: () => void
+  onPauseReplay?: () => void
+  onResumeReplay?: () => void
+  onStopReplay?: () => void
+  onSwitchReplay?: () => void
   onOpenSettings?: () => void
 }>()
 
@@ -59,6 +69,86 @@ const statusText = () => {
     </div>
 
     <div class="header-right">
+      <div class="dataset-controls">
+        <d-select
+          v-if="props.datasetOptions?.length"
+          :model-value="props.datasetId"
+          class="dataset-select"
+          :options="props.datasetOptions"
+          @update:model-value="props.onDatasetChange?.(String(Array.isArray($event) ? $event[0] : $event))"
+        />
+        <div class="dataset-actions">
+          <button
+            class="icon-btn"
+            type="button"
+            :disabled="props.replayRunning === true"
+            aria-label="Start dataset replay"
+            title="Start"
+            @click="props.onStartReplay?.()"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </button>
+          <button
+            class="icon-btn"
+            type="button"
+            :disabled="props.replayRunning !== true"
+            aria-label="Pause or resume dataset replay"
+            :title="props.replayPaused === true ? 'Resume' : 'Pause'"
+            @click="props.replayPaused === true ? props.onResumeReplay?.() : props.onPauseReplay?.()"
+          >
+            <svg
+              v-if="props.replayPaused === true"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            <svg
+              v-else
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+            </svg>
+          </button>
+          <button
+            class="icon-btn"
+            type="button"
+            :disabled="props.replayRunning !== true"
+            aria-label="Stop dataset replay"
+            title="Stop"
+            @click="props.onStopReplay?.()"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path d="M6 6h12v12H6z" />
+            </svg>
+          </button>
+          <button
+            class="icon-btn"
+            type="button"
+            aria-label="Switch dataset replay"
+            title="Switch"
+            @click="props.onSwitchReplay?.()"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                d="M7 7h9l-2-2 1.4-1.4L20.8 9l-5.4 5.4L14 13l2-2H7V7zM17 17H8l2 2-1.4 1.4L3.2 15l5.4-5.4L10 11l-2 2h9v4z"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
       <div class="time-display">
         <div class="time-label">
           系统时间
@@ -213,6 +303,67 @@ const statusText = () => {
   gap: 1rem;
 }
 
+.dataset-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.dataset-select {
+  width: 210px;
+}
+
+.dashboard-header :deep(.devui-select),
+.dashboard-header :deep(.devui-dropdown-origin),
+.dashboard-header :deep(.devui-select-input),
+.dashboard-header :deep(.devui-select .devui-select-input),
+.dashboard-header :deep(.devui-select input) {
+  color: var(--text-primary);
+}
+
+.dashboard-header :deep(.devui-select .devui-select-input),
+.dashboard-header :deep(.devui-select-input),
+.dashboard-header :deep(.devui-select input) {
+  background: rgba(10, 20, 40, 0.78);
+  border-color: rgba(0, 240, 255, 0.22);
+}
+
+.dataset-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 240, 255, 0.22);
+  background: rgba(10, 20, 40, 0.75);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.icon-btn:hover:not(:disabled) {
+  border-color: rgba(0, 240, 255, 0.6);
+  color: var(--text-primary);
+  background: rgba(0, 240, 255, 0.06);
+}
+
+.icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .header-btn {
   border-color: var(--border-glow);
   color: var(--text-secondary);
@@ -285,6 +436,17 @@ const statusText = () => {
 
   .time-display {
     margin-right: 0;
+  }
+
+  .dataset-controls {
+    order: 2;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .dataset-select {
+    width: min(360px, 100%);
+    flex: 1;
   }
 }
 </style>
