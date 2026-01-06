@@ -341,7 +341,7 @@ def main() -> None:
         )
 
     _ = (
-        df_features.writeStream.outputMode("update")
+        df_features.writeStream.outputMode("append")
         .foreachBatch(_write_features_batch)
         .option("checkpointLocation", checkpoint_base)
         .start()
