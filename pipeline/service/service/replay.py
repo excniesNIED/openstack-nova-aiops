@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterator, Optional, Tuple
 
-from kafka import KafkaProducer
+from confluent_kafka import Producer
 
 
 HEAD_PREFIXES = ("DEBUG", "INFO", "WARNING", "WARN", "ERROR", "CRITICAL")
@@ -168,13 +168,13 @@ class ReplayController:
         if rate < 0:
             rate = 0
 
-        producer = KafkaProducer(
-            bootstrap_servers=self.cfg.kafka_bootstrap,
-            value_serializer=lambda d: json.dumps(d, ensure_ascii=False).encode("utf-8"),
-            key_serializer=lambda s: (s or "").encode("utf-8"),
-            linger_ms=10,
-            retries=3,
-            acks=1,
+        producer = Producer(
+            {
+                "bootstrap.servers": self.cfg.kafka_bootstrap,
+                "linger.ms": 10,
+                "message.send.max.retries": 3,
+                "acks": 1,
+            }
         )
 
         try:
@@ -195,7 +195,12 @@ class ReplayController:
                         "end_line_no": int(end_ln),
                         "raw_record": record,
                     }
-                    producer.send(self.cfg.raw_topic, key="", value=msg)
+                    producer.produce(
+                        self.cfg.raw_topic,
+                        key=b"",
+                        value=json.dumps(msg, ensure_ascii=False).encode("utf-8"),
+                    )
+                    producer.poll(0)
                     sent += 1
                     self._inc_sent(1)
 
@@ -212,17 +217,17 @@ class ReplayController:
                 if not loop:
                     break
 
-            producer.flush(timeout=10)
+            producer.flush(10)
             self._set_done()
         except Exception as e:
             try:
-                producer.flush(timeout=5)
+                producer.flush(5)
             except Exception:
                 pass
             self._set_done(err=str(e))
         finally:
             try:
-                producer.close(timeout=5)
+                producer.flush(5)
             except Exception:
                 pass
 

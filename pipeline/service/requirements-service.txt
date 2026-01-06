@@ -1,6 +1,6 @@
 fastapi==0.115.6
 uvicorn[standard]==0.30.6
-kafka-python==2.0.2
+confluent-kafka==2.11.1
 SQLAlchemy==2.0.36
 pydantic==2.10.3
 joblib==1.5.1

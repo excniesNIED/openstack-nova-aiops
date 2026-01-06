@@ -8,8 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from kafka import KafkaConsumer
-from kafka import KafkaProducer
+from confluent_kafka import Consumer, Producer
 
 from .broadcast import AlertBroadcaster
 from .db import Alert, init_db, insert_alert, make_engine, utcnow_iso
@@ -34,7 +33,7 @@ class InferenceWorker:
         self.cfg = cfg
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
-        self._producer: Optional[KafkaProducer] = None
+        self._producer: Optional[Producer] = None
         self._broadcaster = broadcaster
 
         self._engine = make_engine(cfg.db_url)
@@ -77,50 +76,53 @@ class InferenceWorker:
         return "P2"
 
     def _run(self) -> None:
-        consumer = KafkaConsumer(
-            self.cfg.features_topic,
-            bootstrap_servers=self.cfg.kafka_bootstrap,
-            group_id=self.cfg.group_id,
-            enable_auto_commit=True,
-            auto_offset_reset="latest",
-            value_deserializer=lambda b: json.loads(b.decode("utf-8", errors="replace")),
-            consumer_timeout_ms=1000,
+        consumer = Consumer(
+            {
+                "bootstrap.servers": self.cfg.kafka_bootstrap,
+                "group.id": self.cfg.group_id,
+                "enable.auto.commit": True,
+                "auto.offset.reset": "latest",
+            }
         )
-        producer = KafkaProducer(
-            bootstrap_servers=self.cfg.kafka_bootstrap,
-            value_serializer=lambda d: json.dumps(d, ensure_ascii=False).encode("utf-8"),
-            linger_ms=10,
-            retries=3,
-            acks=1,
+        consumer.subscribe([self.cfg.features_topic])
+
+        producer = Producer(
+            {
+                "bootstrap.servers": self.cfg.kafka_bootstrap,
+                "linger.ms": 10,
+                "message.send.max.retries": 3,
+                "acks": 1,
+            }
         )
         self._producer = producer
 
         try:
             while not self._stop.is_set():
                 self._purge_dedup()
-                polled = consumer.poll(timeout_ms=1000, max_records=200)
-                if not polled:
+                msg = consumer.poll(1.0)
+                if msg is None:
                     continue
-
-                for _tp, msgs in polled.items():
-                    for m in msgs:
-                        try:
-                            self._handle_feature(m.value)
-                        except Exception:
-                            # Keep worker alive; details are surfaced in container logs.
-                            continue
+                if msg.error():
+                    # Keep worker alive; details are surfaced in container logs.
+                    continue
+                try:
+                    raw = msg.value()
+                    data = json.loads((raw or b"{}").decode("utf-8", errors="replace"))
+                    self._handle_feature(data)
+                except Exception:
+                    continue
         finally:
             self._producer = None
             try:
-                producer.flush(timeout=5)
+                producer.flush(5)
             except Exception:
                 pass
             try:
-                producer.close(timeout=5)
+                producer.flush(5)
             except Exception:
                 pass
             try:
-                consumer.close(timeout=5)
+                consumer.close()
             except Exception:
                 pass
 
@@ -225,11 +227,12 @@ class InferenceWorker:
         if p is None:
             return
         try:
-            p.send(
+            p.produce(
                 self.cfg.alerts_topic,
                 key=str(a.alert_id).encode("utf-8", errors="ignore"),
-                value=alert_msg,
+                value=json.dumps(alert_msg, ensure_ascii=False).encode("utf-8"),
             )
+            p.poll(0)
         except Exception:
             # Best-effort emission; do not disrupt inference.
             return
