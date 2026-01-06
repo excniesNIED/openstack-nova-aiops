@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { DependencyCheck, HealthResponse } from '@/api/types'
 
 type ServiceStatusKind = 'online' | 'warning' | 'offline' | 'unknown'
@@ -22,6 +22,8 @@ type ServiceItem = {
   availability: string
   endpoint?: string | null
 }
+
+const showOptional = ref(false)
 
 const normalizeDep = (
   dep?: DependencyCheck,
@@ -72,6 +74,15 @@ const services = computed(() => {
   ] satisfies ServiceItem[]
 })
 
+const isOptional = (s: ServiceItem) => s.rawStatus === 'not_configured' || s.rawStatus === 'disabled'
+
+const optionalCount = computed(() => services.value.filter(isOptional).length)
+
+const visibleServices = computed(() => {
+  if (showOptional.value) return services.value
+  return services.value.filter((s) => !isOptional(s))
+})
+
 const getStatusClass = (status: string) => {
   return {
     online: 'status-online',
@@ -97,19 +108,19 @@ const getStatusText = (status: ServiceStatusKind, rawStatus?: string) => {
       <div class="status-summary">
         <span class="summary-item online">
           <span class="dot" />
-          {{ services.filter(s => s.status === 'online').length }} 在线
+          {{ visibleServices.filter(s => s.status === 'online').length }} 在线
         </span>
         <span class="summary-item warning">
           <span class="dot" />
-          {{ services.filter(s => s.status === 'warning').length }} 警告
+          {{ visibleServices.filter(s => s.status === 'warning').length }} 警告
         </span>
         <span class="summary-item offline">
           <span class="dot" />
-          {{ services.filter(s => s.status === 'offline').length }} 离线
+          {{ visibleServices.filter(s => s.status === 'offline').length }} 离线
         </span>
         <span class="summary-item unknown">
           <span class="dot" />
-          {{ services.filter(s => s.status === 'unknown').length }} 未检测
+          {{ visibleServices.filter(s => s.status === 'unknown').length }} 未检测
         </span>
       </div>
     </div>
@@ -121,6 +132,14 @@ const getStatusText = (status: ServiceStatusKind, rawStatus?: string) => {
       <div class="mono">
         Last: {{ props.lastUpdatedIso ? new Date(props.lastUpdatedIso).toLocaleTimeString('zh-CN') : '--' }}
       </div>
+      <button
+        v-if="optionalCount > 0"
+        type="button"
+        class="toggle"
+        @click="showOptional = !showOptional"
+      >
+        {{ showOptional ? '收起' : `查看更多（${optionalCount}项未启用）` }}
+      </button>
       <div
         v-if="props.error"
         class="mono err"
@@ -131,7 +150,7 @@ const getStatusText = (status: ServiceStatusKind, rawStatus?: string) => {
     
     <div class="services-grid">
       <div
-        v-for="service in services"
+        v-for="service in visibleServices"
         :key="service.key"
         class="service-card"
         :class="getStatusClass(service.status)"
@@ -250,6 +269,21 @@ const getStatusText = (status: ServiceStatusKind, rawStatus?: string) => {
   margin-bottom: 0.75rem;
   color: var(--text-secondary);
   font-size: 0.8rem;
+}
+
+.toggle {
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgba(224, 224, 255, 0.8);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.toggle:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
 }
 
 .mono {
