@@ -1,0 +1,20 @@
+[project]
+name = "openstack-aiops-pipeline-service"
+version = "0.1.0"
+description = "FastAPI backend for the OpenStack AIOps pipeline demo."
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi==0.115.6",
+  "httpx==0.27.2",
+  "uvicorn[standard]==0.30.6",
+  "confluent-kafka==2.11.1",
+  "SQLAlchemy==2.0.36",
+  "pydantic==2.10.3",
+  "joblib==1.5.1",
+  "numpy==2.2.6",
+  "scikit-learn==1.7.2",
+  "PyMySQL==1.1.1",
+]
+
+[tool.uv]
+package = false

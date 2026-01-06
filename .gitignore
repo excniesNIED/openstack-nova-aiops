@@ -1,2 +1,9 @@
 *.pyc
 __pycache__/*
+
+# Python virtual environments (uv/venv)
+.venv/
+**/.venv/
+.uv/
+**/.uv/
+.uv-cache/
