@@ -148,6 +148,8 @@ docker compose -f pipeline/docker-compose.yml --profile hadoop up -d
 - `openstack.features`
 - `openstack.alerts`
 
+> 注意：`kafka-init` 是一次性初始化容器，创建 topic 后会以 `Exited (0)` 结束（正常现象），Kafka Broker 容器本身应保持 `Up`。
+
 你也可以手动验证：
 
 ```bash
@@ -165,15 +167,17 @@ docker compose -f pipeline/docker-compose.yml logs -f spark-streaming
 
 如果启用了 Hadoop profile（HDFS），`spark-streaming` 会自动探测 `namenode:8020` 并把明细与窗口特征写入 HDFS（Parquet）：
 
+> 注意：Hadoop profile 会启动 `hdfs-init`（一次性初始化容器）创建 `/tmp/openstack/*` 并设置权限；完成后会以 `Exited (0)` 结束（正常现象），NameNode/DataNode 容器本身应保持 `Up`。
+
 默认落地路径：
 
-- `hdfs://namenode:8020/data/openstack/records`
-- `hdfs://namenode:8020/data/openstack/features`
+- `hdfs://namenode:8020/tmp/openstack/records`
+- `hdfs://namenode:8020/tmp/openstack/features`
 
 如需手动重跑（一般不需要；且首次运行会下载 Spark Kafka connector，容器需能联网）：
 
 ```bash
-docker compose -f pipeline/docker-compose.yml exec spark-master /opt/spark/bin/spark-submit --master spark://spark-master:7077 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.apache.spark:spark-token-provider-kafka-0-10_2.12:3.5.3 /opt/pipeline/streaming/openstack_streaming_job.py --bootstrap kafka:9092 --raw-topic openstack.raw --features-topic openstack.features --window 60 --slide 30 --checkpoint /tmp/checkpoints/openstack_streaming_job --hdfs-records-path hdfs://namenode:8020/data/openstack/records --hdfs-features-path hdfs://namenode:8020/data/openstack/features
+docker compose -f pipeline/docker-compose.yml exec spark-master /opt/spark/bin/spark-submit --master spark://spark-master:7077 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.apache.spark:spark-token-provider-kafka-0-10_2.12:3.5.3 /opt/pipeline/streaming/openstack_streaming_job.py --bootstrap kafka:9092 --raw-topic openstack.raw --features-topic openstack.features --window 60 --slide 30 --checkpoint /tmp/checkpoints/openstack_streaming_job --hdfs-records-path hdfs://namenode:8020/tmp/openstack/records --hdfs-features-path hdfs://namenode:8020/tmp/openstack/features
 ```
 
 4) 回放日志（写入 `openstack.raw`）：

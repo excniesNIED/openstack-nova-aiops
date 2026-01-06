@@ -56,7 +56,7 @@ services:
       KAFKA_LOG4J_OPTS: "-Dkafka.logs.dir=/tmp"
     entrypoint:
       - bash
-      - -lc
+      - -c
       - |
         set -euo pipefail
         echo "Waiting for Kafka broker to accept requests..."
@@ -70,6 +70,7 @@ services:
         kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.alerts --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:9092 --list
         echo "Kafka topics ready."
+        echo "kafka-init is a one-shot init container; exiting (0)."
     restart: "no"
 
   spark-master:
@@ -211,7 +212,7 @@ services:
       - datanode
     entrypoint:
       - bash
-      - -lc
+      - -c
       - |
         set -euo pipefail
         HDFS="$(command -v hdfs || true)"
@@ -227,9 +228,13 @@ services:
           sleep 2
         done
         "$$HDFS" dfs -ls / >/dev/null
+        # Ensure /tmp exists and is writable for non-superusers.
+        "$$HDFS" dfs -test -d /tmp || "$$HDFS" dfs -mkdir /tmp
+        "$$HDFS" dfs -chmod 1777 /tmp || true
         "$$HDFS" dfs -mkdir -p /tmp/openstack/records /tmp/openstack/features
         "$$HDFS" dfs -chmod -R 777 /tmp/openstack
         echo "HDFS directories ready."
+        echo "hdfs-init is a one-shot init container; exiting (0)."
     restart: "no"
 
   backend:

@@ -155,7 +155,7 @@ def main() -> None:
     p.add_argument(
         "--hdfs-records-path",
         default="",
-        help="Optional: write parsed records to HDFS as Parquet (e.g. hdfs://namenode:8020/data/openstack/records)",
+        help="Optional: write parsed records to HDFS as Parquet (e.g. hdfs://namenode:8020/tmp/openstack/records)",
     )
     p.add_argument(
         "--hdfs-features-path",

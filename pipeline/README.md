@@ -70,6 +70,8 @@ MariaDB 默认配置：
 
 `pipeline/docker-compose.yml` 已内置 `kafka-init`，启动 compose 后会自动创建；也可以手动创建：
 
+> 注意：`kafka-init` 是一次性初始化容器，创建 topic 后会以 `Exited (0)` 结束（这是正常现象），Kafka Broker 容器本身应保持 `Up`。
+
 ```bash
 docker compose -f pipeline/docker-compose.yml exec kafka kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.raw --partitions 3 --replication-factor 1
 docker compose -f pipeline/docker-compose.yml exec kafka kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic openstack.features --partitions 3 --replication-factor 1
@@ -98,8 +100,10 @@ docker compose -f pipeline/docker-compose.yml exec spark-master /opt/spark/bin/s
 
 如果启用了 HDFS（`--profile hadoop`），`spark-streaming` 会自动探测 `namenode:8020` 并启用 Parquet 落地；也可以手动指定：
 
+> 注意：启用 Hadoop profile 时会启动 `hdfs-init`（一次性初始化容器）创建 `/tmp/openstack/*` 并设置权限；完成后会以 `Exited (0)` 结束（正常现象），NameNode/DataNode 容器本身应保持 `Up`。
+
 ```bash
-docker compose -f pipeline/docker-compose.yml exec spark-master /opt/spark/bin/spark-submit --master spark://spark-master:7077 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.apache.spark:spark-token-provider-kafka-0-10_2.12:3.5.3 /opt/pipeline/streaming/openstack_streaming_job.py --bootstrap kafka:9092 --raw-topic openstack.raw --features-topic openstack.features --window 60 --slide 30 --checkpoint /tmp/checkpoints/openstack_streaming_job --hdfs-records-path hdfs://namenode:8020/data/openstack/records --hdfs-features-path hdfs://namenode:8020/data/openstack/features
+docker compose -f pipeline/docker-compose.yml exec spark-master /opt/spark/bin/spark-submit --master spark://spark-master:7077 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.apache.spark:spark-token-provider-kafka-0-10_2.12:3.5.3 /opt/pipeline/streaming/openstack_streaming_job.py --bootstrap kafka:9092 --raw-topic openstack.raw --features-topic openstack.features --window 60 --slide 30 --checkpoint /tmp/checkpoints/openstack_streaming_job --hdfs-records-path hdfs://namenode:8020/tmp/openstack/records --hdfs-features-path hdfs://namenode:8020/tmp/openstack/features
 ```
 
 备注：`--packages ...` 首次会从 Maven 下载依赖（需要容器能联网）。如果你所在网络受限，可以改成把 jar 预置到镜像里（后续我也可以帮你做“离线 jar 镜像”版）。
