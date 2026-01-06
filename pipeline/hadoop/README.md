@@ -32,7 +32,7 @@ docker compose -f pipeline/docker-compose.yml logs -f spark-streaming
 If you need to run it manually with explicit HDFS options:
 
 ```bash
-docker compose -f pipeline/docker-compose.yml exec spark-master /opt/spark/bin/spark-submit --master spark://spark-master:7077 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.apache.spark:spark-token-provider-kafka-0-10_2.12:3.5.3 /opt/pipeline/streaming/openstack_streaming_job.py --bootstrap kafka:9092 --raw-topic openstack.raw --features-topic openstack.features --window 60 --slide 30 --checkpoint /opt/checkpoints/openstack_streaming_job --hdfs-records-path hdfs://namenode:8020/data/openstack/records --hdfs-features-path hdfs://namenode:8020/data/openstack/features
+docker compose -f pipeline/docker-compose.yml exec spark-master /opt/spark/bin/spark-submit --master spark://spark-master:7077 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.apache.spark:spark-token-provider-kafka-0-10_2.12:3.5.3 /opt/pipeline/streaming/openstack_streaming_job.py --bootstrap kafka:9092 --raw-topic openstack.raw --features-topic openstack.features --window 60 --slide 30 --checkpoint /tmp/checkpoints/openstack_streaming_job --hdfs-records-path hdfs://namenode:8020/data/openstack/records --hdfs-features-path hdfs://namenode:8020/data/openstack/features
 ```
 
 Notes:

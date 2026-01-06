@@ -6,6 +6,7 @@ sys.dont_write_bytecode = True
 import argparse
 import hashlib
 import re
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from pyspark.sql import SparkSession
@@ -31,6 +32,26 @@ _IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 _MAC_RE = re.compile(r"\b(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\b", re.IGNORECASE)
 _ABS_PATH_RE = re.compile(r"/(?:[A-Za-z0-9._-]+/)+[A-Za-z0-9._-]+")
 _LONG_NUM_RE = re.compile(r"\b\d{4,}\b")
+
+
+def _normalize_checkpoint_location(raw: str) -> str:
+    """
+    Ensure checkpointLocation uses local FS by default.
+
+    With Hadoop configs (fs.defaultFS=hdfs://...), a plain path like "/tmp/..."
+    is interpreted as an HDFS path, and may fail due to HDFS root permissions.
+    """
+    s = (raw or "").strip()
+    if not s:
+        s = "/tmp/checkpoints/openstack_streaming_job"
+
+    if "://" in s:
+        return s
+
+    p = Path(s)
+    if not p.is_absolute():
+        p = (Path.cwd() / p).absolute()
+    return p.as_uri()
 
 
 def _extract_head_fields(raw_record: str) -> Tuple[str, str, str]:
@@ -130,7 +151,7 @@ def main() -> None:
     p.add_argument("--features-topic", default="openstack.features")
     p.add_argument("--window", type=int, default=60, help="Window size seconds")
     p.add_argument("--slide", type=int, default=30, help="Slide size seconds")
-    p.add_argument("--checkpoint", default="/opt/checkpoints/openstack_streaming_job")
+    p.add_argument("--checkpoint", default="/tmp/checkpoints/openstack_streaming_job")
     p.add_argument(
         "--hdfs-records-path",
         default="",
@@ -142,6 +163,7 @@ def main() -> None:
         help="Optional: write window features snapshots to HDFS as Parquet (may contain updates per window)",
     )
     args = p.parse_args()
+    checkpoint_base = _normalize_checkpoint_location(args.checkpoint)
 
     spark = (
         SparkSession.builder.appName("openstack-streaming-job")
@@ -321,15 +343,16 @@ def main() -> None:
     _ = (
         df_features.writeStream.outputMode("update")
         .foreachBatch(_write_features_batch)
-        .option("checkpointLocation", args.checkpoint)
+        .option("checkpointLocation", checkpoint_base)
         .start()
     )
 
     if args.hdfs_records_path:
+        records_checkpoint = f"{checkpoint_base.rstrip('/')}/records"
         _ = (
             df_records.writeStream.outputMode("append")
             .foreachBatch(_write_records_batch)
-            .option("checkpointLocation", f"{args.checkpoint}/records")
+            .option("checkpointLocation", records_checkpoint)
             .start()
         )
 

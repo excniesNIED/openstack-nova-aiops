@@ -92,7 +92,6 @@ services:
     volumes:
       - ../:/opt/workspace:ro
       - ./streaming:/opt/pipeline/streaming:ro
-      - spark-checkpoints:/opt/checkpoints
       - ./hadoop/conf:/opt/spark/conf/hadoop:ro
 
   spark-worker:
@@ -127,13 +126,16 @@ services:
     volumes:
       - ./streaming:/opt/pipeline/streaming:ro
       - ./hadoop/conf:/opt/spark/conf/hadoop:ro
-      - spark-checkpoints:/opt/checkpoints
-      - spark-ivy:/tmp/.ivy2
     command:
       - bash
       - -lc
       - |
         set -euo pipefail
+        # NOTE: Do NOT mount a Docker named volume to /tmp/.ivy2.
+        # The official Spark image runs as a non-root user; named volumes are root-owned by default,
+        # which can prevent Ivy from creating its cache directory and crash spark-submit.
+        mkdir -p /tmp/.ivy2/cache /tmp/.ivy2/jars
+
         wait_port() {
           local host="$1"
           local port="$2"
@@ -170,7 +172,7 @@ services:
             --features-topic openstack.features \
             --window 60 \
             --slide 30 \
-            --checkpoint /opt/checkpoints/openstack_streaming_job \
+            --checkpoint /tmp/checkpoints/openstack_streaming_job \
             "$${HDFS_ARGS[@]}"
     restart: unless-stopped
 
@@ -255,30 +257,29 @@ services:
       - alerts-db:/data
       - ./service:/app:ro
     working_dir: /app
-    command: >
-      bash -lc "
-      set -euo pipefail
-      wait_port() {
-        local host=\"$1\"
-        local port=\"$2\"
-        for i in \$$(seq 1 60); do
-          (echo >\"/dev/tcp/\$${host}/\$${port}\") >/dev/null 2>&1 && return 0
-          sleep 2
-        done
-        return 1
-      }
-      echo \"Waiting for Kafka (kafka:9092)...\"
-      wait_port kafka 9092
-      echo \"Waiting for MariaDB (mariadb:3306)...\"
-      wait_port mariadb 3306
-      pip install --no-cache-dir -r /app/requirements-service.txt &&
-      python -m service.app
-      "
+    command:
+      - bash
+      - -lc
+      - |
+        set -euo pipefail
+        wait_port() {
+          local host="$1"
+          local port="$2"
+          for i in $$(seq 1 60); do
+            (echo >"/dev/tcp/$${host}/$${port}") >/dev/null 2>&1 && return 0
+            sleep 2
+          done
+          return 1
+        }
+        echo "Waiting for Kafka (kafka:9092)..."
+        wait_port kafka 9092
+        echo "Waiting for MariaDB (mariadb:3306)..."
+        wait_port mariadb 3306
+        pip install --no-cache-dir -r /app/requirements-service.txt
+        python -m service.app
 
 volumes:
   mariadb-data:
   alerts-db:
-  spark-checkpoints:
-  spark-ivy:
   hadoop-namenode:
   hadoop-datanode:
