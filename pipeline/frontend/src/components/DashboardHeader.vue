@@ -321,6 +321,7 @@ const statusText = () => {
   color: var(--text-primary);
 }
 
+.dashboard-header :deep(.devui-dropdown-origin),
 .dashboard-header :deep(.devui-select .devui-select-input),
 .dashboard-header :deep(.devui-select-input),
 .dashboard-header :deep(.devui-select input) {

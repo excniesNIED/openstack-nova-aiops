@@ -400,6 +400,7 @@ onMounted(async () => {
 .welcome :deep(.devui-input__wrapper),
 .welcome :deep(.devui-select .devui-select-input),
 .welcome :deep(.devui-input-number),
+.welcome :deep(.devui-dropdown-origin),
 .welcome :deep(.devui-select-input),
 .welcome :deep(.devui-input input),
 .welcome :deep(.devui-input-number input),
@@ -424,7 +425,7 @@ onMounted(async () => {
 .grid {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
   gap: 1.1rem;
 }
 
@@ -529,6 +530,16 @@ onMounted(async () => {
   border-color: rgba(0, 240, 255, 0.85);
 }
 
+.welcome :deep(.devui-btn:disabled),
+.welcome :deep(.devui-btn-primary:disabled),
+.welcome :deep(.devui-btn-outline:disabled),
+.welcome :deep(.devui-btn-text:disabled) {
+  background: rgba(10, 20, 40, 0.45);
+  border-color: rgba(0, 240, 255, 0.14);
+  color: rgba(224, 224, 255, 0.5);
+  box-shadow: none;
+}
+
 .welcome :deep(.devui-btn-outline) {
   background: rgba(10, 20, 40, 0.55);
   border-color: rgba(0, 240, 255, 0.28);
@@ -559,6 +570,7 @@ onMounted(async () => {
   color: var(--text-secondary);
   font-size: 0.85rem;
   line-height: 1.3;
+  white-space: nowrap;
 }
 
 .v {
@@ -615,9 +627,8 @@ onMounted(async () => {
   }
 
   .kv {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
   }
 
   .v {

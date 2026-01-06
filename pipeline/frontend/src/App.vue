@@ -632,6 +632,41 @@ onUnmounted(() => {
   }
 }
 
+.settings :deep(.devui-input),
+.settings :deep(.devui-select),
+.settings :deep(.devui-input-number),
+.settings :deep(.devui-dropdown-origin),
+.settings :deep(.devui-switch) {
+  color: var(--text-primary);
+}
+
+.settings :deep(.devui-input__wrapper),
+.settings :deep(.devui-select .devui-select-input),
+.settings :deep(.devui-select-input),
+.settings :deep(.devui-input-number),
+.settings :deep(.devui-input input),
+.settings :deep(.devui-input-number input),
+.settings :deep(.devui-select input) {
+  background: rgba(10, 20, 40, 0.92);
+  border-color: rgba(0, 240, 255, 0.22);
+}
+
+.settings :deep(.devui-input input::placeholder),
+.settings :deep(.devui-input-number input::placeholder),
+.settings :deep(.devui-select input::placeholder) {
+  color: rgba(224, 224, 255, 0.55);
+}
+
+.settings :deep(.devui-btn-primary) {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.9), rgba(0, 240, 255, 0.6));
+  border-color: rgba(0, 240, 255, 0.65);
+}
+
+.settings :deep(.devui-btn-primary:hover:not(:disabled)) {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 1), rgba(0, 240, 255, 0.7));
+  border-color: rgba(0, 240, 255, 0.85);
+}
+
 .settings {
   display: flex;
   flex-direction: column;
