@@ -76,12 +76,28 @@ export async function listControlLogs(baseUrl: string, options?: FetchOptions): 
   return fetchJson<Record<string, string>>(buildUrl(baseUrl, '/control/logs'), options)
 }
 
+export async function pauseReplay(baseUrl: string, options?: FetchOptions): Promise<ControlStatus> {
+  return postJson<ControlStatus>(buildUrl(baseUrl, '/control/pause'), {}, options)
+}
+
+export async function resumeReplay(baseUrl: string, options?: FetchOptions): Promise<ControlStatus> {
+  return postJson<ControlStatus>(buildUrl(baseUrl, '/control/resume'), {}, options)
+}
+
 export async function startReplay(
   baseUrl: string,
   req: StartReplayRequest,
   options?: FetchOptions,
 ): Promise<ControlStatus> {
   return postJson<ControlStatus>(buildUrl(baseUrl, '/control/start'), req, options)
+}
+
+export async function switchReplay(
+  baseUrl: string,
+  req: StartReplayRequest,
+  options?: FetchOptions,
+): Promise<ControlStatus> {
+  return postJson<ControlStatus>(buildUrl(baseUrl, '/control/switch'), req, options)
 }
 
 export async function stopReplay(baseUrl: string, options?: FetchOptions): Promise<ControlStatus> {

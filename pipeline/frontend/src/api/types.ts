@@ -60,6 +60,7 @@ export type HealthResponse = {
 
 export type ControlStatus = {
   running: boolean
+  paused?: boolean
   dataset_id: string
   log_path: string | null
   rate: number
