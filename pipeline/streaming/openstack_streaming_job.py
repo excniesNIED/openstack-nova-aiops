@@ -215,52 +215,35 @@ def main() -> None:
     df_records = df_records.withWatermark("event_ts", "5 minutes")
     w = F.window(F.col("event_ts"), f"{args.window} seconds", f"{args.slide} seconds")
 
-    # Template counts: (window, entity_key, template_id) -> count
-    df_tpl = df_records.groupBy(w.alias("w"), "entity_key", "template_id").agg(F.count(F.lit(1)).alias("cnt"))
-    df_tpl_map = df_tpl.groupBy("w", "entity_key").agg(
-        F.map_from_entries(F.collect_list(F.struct(F.col("template_id"), F.col("cnt")))).alias("template_counts"),
-        F.sum("cnt").alias("total_records"),
-    )
+    @F.udf(returnType=T.MapType(T.StringType(), T.LongType()))
+    def template_counts_udf(template_ids: Optional[List[str]]) -> Dict[str, int]:
+        if not template_ids:
+            return {}
+        counts: Dict[str, int] = {}
+        for template_id in template_ids:
+            if not template_id:
+                continue
+            key = str(template_id)
+            counts[key] = int(counts.get(key, 0)) + 1
+        return counts
 
-    # Level counts
-    df_lvl = df_records.groupBy(w.alias("w"), "entity_key").agg(
-        F.sum(F.when(F.col("level") == F.lit("ERROR"), F.lit(1)).otherwise(F.lit(0))).alias("error_cnt"),
-        F.sum(
-            F.when((F.col("level") == F.lit("WARNING")) | (F.col("level") == F.lit("WARN")), F.lit(1)).otherwise(F.lit(0))
-        ).alias("warn_cnt"),
-        F.sum(F.when(F.col("level") == F.lit("INFO"), F.lit(1)).otherwise(F.lit(0))).alias("info_cnt"),
-    )
-
-    # Keyword counts: explode map -> sum -> rebuild map
-    df_kw = df_records.select(w.alias("w"), "entity_key", F.explode_outer("keyword_counts").alias("kw", "kcnt"))
-    df_kw = df_kw.groupBy("w", "entity_key", "kw").agg(F.sum("kcnt").alias("cnt"))
-    df_kw_map = df_kw.groupBy("w", "entity_key").agg(
-        F.map_from_entries(F.collect_list(F.struct(F.col("kw"), F.col("cnt")))).alias("keyword_counts")
-    )
-
-    # Error examples (limit to first 5; best-effort)
-    df_err = (
-        df_records.where(F.col("level") == F.lit("ERROR"))
-        .groupBy(w.alias("w"), "entity_key")
-        .agg(
-            F.collect_list(
-                F.struct(
-                    F.col("start_line_no").alias("start_line_no"),
-                    F.col("end_line_no").alias("end_line_no"),
-                    F.col("component").alias("component"),
-                    F.col("raw").alias("raw"),
-                )
-            ).alias("error_examples")
-        )
-        .withColumn("error_examples", F.expr("slice(error_examples, 1, 5)"))
-    )
-
-    df_join = df_tpl_map.join(df_lvl, on=["w", "entity_key"], how="left").join(df_kw_map, on=["w", "entity_key"], how="left")
-    df_join = df_join.join(df_err, on=["w", "entity_key"], how="left")
-
-    df_join = df_join.withColumn("error_ratio", F.when(F.col("total_records") > 0, F.col("error_cnt") / F.col("total_records")).otherwise(F.lit(0.0)))
-    df_join = df_join.withColumn("window_start", F.col("w.start"))
-    df_join = df_join.withColumn("window_end", F.col("w.end"))
+    @F.udf(returnType=T.MapType(T.StringType(), T.LongType()))
+    def merge_keyword_counts_udf(keyword_maps: Optional[List[Optional[Dict[str, int]]]]) -> Dict[str, int]:
+        if not keyword_maps:
+            return {}
+        merged: Dict[str, int] = {}
+        for keyword_map in keyword_maps:
+            if not keyword_map:
+                continue
+            for k, v in keyword_map.items():
+                if k is None or v is None:
+                    continue
+                key = str(k)
+                try:
+                    merged[key] = int(merged.get(key, 0)) + int(v)
+                except Exception:
+                    continue
+        return merged
 
     # Best-effort top_templates (take top 10 by count)
     @F.udf(returnType=T.ArrayType(T.StringType()))
@@ -270,13 +253,45 @@ def main() -> None:
         items = sorted(m.items(), key=lambda kv: (-int(kv[1]), kv[0]))
         return [k for k, _ in items[:10]]
 
-    df_join = df_join.withColumn("top_templates", top_templates_udf(F.col("template_counts")))
+    df_agg = df_records.groupBy(w.alias("w"), "entity_key").agg(
+        F.first("dataset_id").alias("dataset_id"),
+        F.count(F.lit(1)).alias("total_records"),
+        F.sum(F.when(F.col("level") == F.lit("ERROR"), F.lit(1)).otherwise(F.lit(0))).alias("error_cnt"),
+        F.sum(
+            F.when((F.col("level") == F.lit("WARNING")) | (F.col("level") == F.lit("WARN")), F.lit(1)).otherwise(F.lit(0))
+        ).alias("warn_cnt"),
+        F.sum(F.when(F.col("level") == F.lit("INFO"), F.lit(1)).otherwise(F.lit(0))).alias("info_cnt"),
+        F.collect_list("template_id").alias("template_ids"),
+        F.collect_list("keyword_counts").alias("keyword_maps"),
+        F.collect_list(
+            F.when(
+                F.col("level") == F.lit("ERROR"),
+                F.struct(
+                    F.col("start_line_no").alias("start_line_no"),
+                    F.col("end_line_no").alias("end_line_no"),
+                    F.col("component").alias("component"),
+                    F.col("raw").alias("raw"),
+                ),
+            )
+        ).alias("error_examples_raw"),
+    )
 
-    # dataset_id is constant for most replay runs; attach "first seen" best-effort.
-    df_ds = df_records.groupBy(w.alias("w"), "entity_key").agg(F.first("dataset_id").alias("dataset_id"))
-    df_join = df_join.join(df_ds, on=["w", "entity_key"], how="left")
+    df_agg = df_agg.withColumn("template_counts", template_counts_udf(F.col("template_ids"))).drop("template_ids")
+    df_agg = df_agg.withColumn("keyword_counts", merge_keyword_counts_udf(F.col("keyword_maps"))).drop("keyword_maps")
+    df_agg = df_agg.withColumn(
+        "error_examples",
+        F.expr("slice(filter(error_examples_raw, x -> x is not null), 1, 5)"),
+    ).drop("error_examples_raw")
 
-    df_features = df_join.select(
+    df_agg = df_agg.withColumn(
+        "error_ratio",
+        F.when(F.col("total_records") > 0, F.col("error_cnt") / F.col("total_records")).otherwise(F.lit(0.0)),
+    )
+    df_agg = df_agg.withColumn("window_start", F.col("w.start"))
+    df_agg = df_agg.withColumn("window_end", F.col("w.end"))
+    df_agg = df_agg.withColumn("top_templates", top_templates_udf(F.col("template_counts")))
+
+    df_features = df_agg.select(
         F.col("entity_key"),
         F.coalesce(F.col("dataset_id"), F.lit("")).alias("dataset_id"),
         F.col("window_start").alias("window_start"),
@@ -341,7 +356,7 @@ def main() -> None:
         )
 
     _ = (
-        df_features.writeStream.outputMode("append")
+        df_features.writeStream.outputMode("update")
         .foreachBatch(_write_features_batch)
         .option("checkpointLocation", checkpoint_base)
         .start()
