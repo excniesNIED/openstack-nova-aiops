@@ -85,6 +85,6 @@ const xyDataset = computed(() =>
 .line-chart {
   width: 100%;
   height: 100%;
-  min-height: 320px;
+  min-height: 240px;
 }
 </style>

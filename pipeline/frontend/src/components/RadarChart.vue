@@ -94,7 +94,7 @@ const radarDataset = computed(() => ({
 .radar-chart {
   width: 100%;
   height: 100%;
-  min-height: 300px;
+  min-height: 240px;
   display: flex;
   align-items: center;
   justify-content: center;

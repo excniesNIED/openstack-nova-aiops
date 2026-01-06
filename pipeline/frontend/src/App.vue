@@ -410,7 +410,7 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 1rem;
-  min-height: 350px;
+  min-height: 280px;
 }
 
 .bottom-row {
@@ -446,6 +446,10 @@ onUnmounted(() => {
   overflow: hidden;
   backdrop-filter: blur(10px);
   transition: all 0.3s ease;
+}
+
+.charts-row .chart-container {
+  padding: 0.75rem;
 }
 
 .chart-container::before {
