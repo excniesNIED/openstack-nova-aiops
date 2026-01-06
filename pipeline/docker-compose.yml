@@ -155,8 +155,9 @@ services:
         if getent hosts namenode >/dev/null 2>&1; then
           if (echo >"/dev/tcp/namenode/8020") >/dev/null 2>&1; then
             HDFS_ARGS+=(
-              --hdfs-records-path hdfs://namenode:8020/data/openstack/records
-              --hdfs-features-path hdfs://namenode:8020/data/openstack/features
+              # Use an HDFS location that is typically world-writable without extra init steps.
+              --hdfs-records-path hdfs://namenode:8020/tmp/openstack/records
+              --hdfs-features-path hdfs://namenode:8020/tmp/openstack/features
             )
             echo "HDFS detected; enabling Parquet sinks."
           fi
@@ -226,8 +227,8 @@ services:
           sleep 2
         done
         "$$HDFS" dfs -ls / >/dev/null
-        "$$HDFS" dfs -mkdir -p /data/openstack/records /data/openstack/features
-        "$$HDFS" dfs -chmod -R 777 /data/openstack
+        "$$HDFS" dfs -mkdir -p /tmp/openstack/records /tmp/openstack/features
+        "$$HDFS" dfs -chmod -R 777 /tmp/openstack
         echo "HDFS directories ready."
     restart: "no"
 

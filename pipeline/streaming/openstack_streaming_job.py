@@ -164,6 +164,8 @@ def main() -> None:
     )
     args = p.parse_args()
     checkpoint_base = _normalize_checkpoint_location(args.checkpoint)
+    hdfs_records_enabled = bool(args.hdfs_records_path)
+    hdfs_features_enabled = bool(args.hdfs_features_path)
 
     spark = (
         SparkSession.builder.appName("openstack-streaming-job")
@@ -308,6 +310,7 @@ def main() -> None:
     )
 
     def _write_features_batch(batch_df, batch_id: int) -> None:
+        nonlocal hdfs_features_enabled
         kafka_df = batch_df.select(
             F.col("entity_key").cast("string").alias("key"),
             F.to_json(
@@ -335,25 +338,40 @@ def main() -> None:
             .save()
         )
 
-        if args.hdfs_features_path:
-            (
-                batch_df.withColumn("batch_id", F.lit(int(batch_id)))
-                .withColumn("dt", F.date_format(F.col("window_start"), "yyyy-MM-dd"))
-                .write.mode("append")
-                .partitionBy("dt", "dataset_id")
-                .parquet(args.hdfs_features_path)
-            )
+        if args.hdfs_features_path and hdfs_features_enabled:
+            try:
+                (
+                    batch_df.withColumn("batch_id", F.lit(int(batch_id)))
+                    .withColumn("dt", F.date_format(F.col("window_start"), "yyyy-MM-dd"))
+                    .write.mode("append")
+                    .partitionBy("dt", "dataset_id")
+                    .parquet(args.hdfs_features_path)
+                )
+            except Exception as e:
+                hdfs_features_enabled = False
+                print(
+                    f"WARNING: failed to write features Parquet to '{args.hdfs_features_path}'; disabling HDFS features sink. {e}",
+                    file=sys.stderr,
+                )
 
     def _write_records_batch(batch_df, batch_id: int) -> None:
-        if not args.hdfs_records_path:
+        nonlocal hdfs_records_enabled
+        if not (args.hdfs_records_path and hdfs_records_enabled):
             return
-        (
-            batch_df.withColumn("batch_id", F.lit(int(batch_id)))
-            .withColumn("dt", F.date_format(F.col("event_ts"), "yyyy-MM-dd"))
-            .write.mode("append")
-            .partitionBy("dt", "dataset_id")
-            .parquet(args.hdfs_records_path)
-        )
+        try:
+            (
+                batch_df.withColumn("batch_id", F.lit(int(batch_id)))
+                .withColumn("dt", F.date_format(F.col("event_ts"), "yyyy-MM-dd"))
+                .write.mode("append")
+                .partitionBy("dt", "dataset_id")
+                .parquet(args.hdfs_records_path)
+            )
+        except Exception as e:
+            hdfs_records_enabled = False
+            print(
+                f"WARNING: failed to write records Parquet to '{args.hdfs_records_path}'; disabling HDFS records sink. {e}",
+                file=sys.stderr,
+            )
 
     _ = (
         df_features.writeStream.outputMode("update")
