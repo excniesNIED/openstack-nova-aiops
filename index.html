@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenStack Nova 运行告警看板 (修复版)</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <style>
+    /* ==============================
+       全局与基础样式 (保持不变)
+       ============================== */
+    :root {
+      --primary-color: #00f0ff;
+      --secondary-color: #ff00ff;
+      --accent-color: #00ff88;
+      --bg-dark: #0a0a1a;
+      --bg-card: rgba(10, 20, 40, 0.85);
+      --border-glow: rgba(0, 240, 255, 0.3);
+      --text-primary: #e0e0ff;
+      --text-secondary: #8888aa;
+      --gradient-cyber: linear-gradient(135deg, #00f0ff 0%, #ff00ff 50%, #00ff88 100%);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', 'Roboto', monospace, sans-serif;
+      background: var(--bg-dark);
+      background-image: 
+        radial-gradient(ellipse at 20% 80%, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(255, 0, 255, 0.08) 0%, transparent 50%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background-image: 
+        linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      animation: gridMove 20s linear infinite;
+      z-index: -1;
+      pointer-events: none;
+    }
+    @keyframes gridMove {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(50px, 50px); }
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-dark); }
+    ::-webkit-scrollbar-thumb { background: var(--border-glow); border-radius: 3px; }
+
+    /* ==============================
+       布局结构
+       ============================== */
+    .dashboard { display: flex; flex-direction: column; min-height: 100vh; }
+    .dashboard-content { flex: 1; padding: 1.2rem; display: flex; flex-direction: column; gap: 1.2rem; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; min-height: 280px; }
+    .bottom-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; min-height: 300px; }
+    .status-row { margin-top: auto; }
+
+    @media (max-width: 1200px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .charts-row, .bottom-row { grid-template-columns: 1fr; }
+    }
+
+    .chart-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glow);
+      border-radius: 12px;
+      padding: 1rem;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      display: flex; flex-direction: column; /* 关键：让内容垂直排列 */
+    }
+    .chart-container:hover { border-color: var(--primary-color); box-shadow: 0 0 15px rgba(0, 240, 255, 0.15); }
+    .chart-container::before {
+      content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 2px;
+      background: var(--gradient-cyber); animation: borderScan 4s linear infinite;
+    }
+    @keyframes borderScan { 0% { left: -100%; } 100% { left: 100%; } }
+
+    .panel-title {
+      font-size: 1rem; font-weight: 600; color: var(--primary-color);
+      margin-bottom: 0.8rem; padding-left: 0.5rem; border-left: 3px solid var(--primary-color);
+      flex-shrink: 0;
+    }
+
+    /* 通用图表容器 */
+    .chart-box { width: 100%; height: 100%; min-height: 240px; flex: 1; }
+
+    /* ==============================
+       [修复] 仪表盘专用样式 (Gauge Grid)
+       ============================== */
+    .gauges-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr); /* 严格三等分 */
+      gap: 0.5rem;
+      height: 100%;
+      align-items: center;
+      flex: 1;
+    }
+    .gauge-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      position: relative;
+    }
+    .gauge-chart-wrapper {
+      width: 100%;
+      height: 140px; /* 给定固定高度或比例，防止塌陷 */
+      flex: 1;
+    }
+    .gauge-label {
+      margin-top: -10px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      z-index: 10;
+      text-shadow: 0 0 5px rgba(0,0,0,0.5);
+    }
+
+    /* ==============================
+       其他组件样式
+       ============================== */
+    /* Header */
+    .dashboard-header { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 1.5rem; background: rgba(10, 20, 40, 0.95); border-bottom: 1px solid var(--border-glow); }
+    .logo-box { display: flex; align-items: center; gap: 1rem; }
+    .logo-text h1 { font-size: 1.5rem; margin: 0; background: var(--gradient-cyber); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .logo-text span { font-size: 0.75rem; color: var(--text-secondary); }
+    .status-bar { display: flex; gap: 1.5rem; font-size: 0.9rem; color: var(--text-secondary); background: rgba(0, 240, 255, 0.05); padding: 0.5rem 1rem; border-radius: 20px; border: 1px solid rgba(0, 240, 255, 0.1); }
+    .status-dot { display: inline-block; width: 8px; height: 8px; background: var(--accent-color); border-radius: 50%; box-shadow: 0 0 8px var(--accent-color); margin-right: 6px; }
+    .highlight { color: var(--primary-color); font-weight: bold; font-family: monospace; }
+    .header-right { display: flex; align-items: center; gap: 1rem; }
+    .cyber-select { background: rgba(10, 20, 40, 0.8); border: 1px solid var(--border-glow); color: var(--primary-color); padding: 0.4rem 0.8rem; border-radius: 4px; outline: none; }
+    .time-val { font-family: monospace; font-size: 1.2rem; color: var(--primary-color); text-shadow: 0 0 5px var(--primary-color); }
+
+    /* Stats Card */
+    .stats-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.2rem; position: relative; display: flex; align-items: center; gap: 1rem; overflow: hidden; }
+    .stats-card::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(90deg, transparent, var(--card-color), transparent); }
+    .icon-box { width: 50px; height: 50px; border-radius: 50%; border: 2px dashed var(--card-color); display: flex; align-items: center; justify-content: center; color: var(--card-color); font-size: 1.2rem; box-shadow: 0 0 10px var(--card-color-dim); }
+    .stats-info { display: flex; flex-direction: column; }
+    .stats-title { font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; }
+    .stats-value { font-size: 1.8rem; font-weight: bold; color: #fff; line-height: 1.2; }
+    .stats-change { font-size: 0.8rem; color: var(--accent-color); }
+
+    /* Service Grid */
+    .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.8rem; }
+    .service-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-left: 3px solid var(--accent-color); padding: 0.8rem; border-radius: 6px; }
+    .svc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .svc-name { font-weight: 600; font-size: 0.9rem; }
+    .svc-dot { width: 8px; height: 8px; background: var(--accent-color); border-radius: 50%; box-shadow: 0 0 6px var(--accent-color); }
+    .svc-meta { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary); }
+    .svc-latency { font-family: monospace; color: var(--primary-color); }
+
+    /* Logs */
+    .log-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 240px; overflow-y: hidden; }
+    .log-item { display: flex; gap: 0.8rem; align-items: center; padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: 4px; font-size: 0.8rem; border-left: 2px solid var(--text-secondary); animation: fadeIn 0.5s ease; }
+    .log-time { font-family: monospace; color: var(--text-secondary); min-width: 60px; }
+    .log-msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .log-p1 { border-color: #ff4444; } .log-p1 .log-icon { color: #ff4444; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+  </style>
+</head>
+<body>
+
+<div class="dashboard">
+  <header class="dashboard-header">
+    <div class="logo-box">
+      <svg width="40" height="40" viewBox="0 0 100 100" fill="none">
+        <path d="M50 10 L90 30 L90 70 L50 90 L10 70 L10 30 Z" stroke="#00f0ff" stroke-width="4" fill="rgba(0,240,255,0.1)"/>
+        <circle cx="50" cy="50" r="15" fill="#00f0ff"/>
+      </svg>
+      <div class="logo-text">
+        <h1>OPENSTACK</h1>
+        <span>NOVA 日志告警看板</span>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div><span class="status-dot"></span>API 已连接</div>
+      <div style="width:1px; height:15px; background:rgba(255,255,255,0.2)"></div>
+      <div>告警数: <span class="highlight" id="header-alert-count">124</span></div>
+      <div style="width:1px; height:15px; background:rgba(255,255,255,0.2)"></div>
+      <div>延迟: <span class="highlight" id="header-latency">45ms</span></div>
+    </div>
+    <div class="header-right">
+      <select class="cyber-select" id="dataset-select">
+        <option value="sample" selected>示例 (sample)</option>
+        <option value="normal">正常 (normal)</option>
+      </select>
+      <div class="time-display">
+        <div style="font-size:0.7rem; color:#888;">SYSTEM TIME</div>
+        <div class="time-val" id="clock">12:00:00</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="dashboard-content">
+    <section class="stats-row">
+      <div class="stats-card" style="--card-color: #00f0ff; --card-color-dim: rgba(0,240,255,0.2)">
+        <div class="icon-box">Σ</div>
+        <div class="stats-info">
+          <span class="stats-title">告警总数</span><span class="stats-value">124</span><span class="stats-change">+2</span>
+        </div>
+      </div>
+      <div class="stats-card" style="--card-color: #ff4444; --card-color-dim: rgba(255,68,68,0.2)">
+        <div class="icon-box">!</div>
+        <div class="stats-info">
+          <span class="stats-title">P1 严重</span><span class="stats-value">12</span><span class="stats-change">+0</span>
+        </div>
+      </div>
+      <div class="stats-card" style="--card-color: #ffaa00; --card-color-dim: rgba(255,170,0,0.2)">
+        <div class="icon-box">⚠</div>
+        <div class="stats-info">
+          <span class="stats-title">P2 警告</span><span class="stats-value">45</span><span class="stats-change">+1</span>
+        </div>
+      </div>
+      <div class="stats-card" style="--card-color: #00ff88; --card-color-dim: rgba(0,255,136,0.2)">
+        <div class="icon-box">✓</div>
+        <div class="stats-info">
+          <span class="stats-title">P3/其他</span><span class="stats-value">67</span><span class="stats-change">+1</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="charts-row">
+      <div class="chart-container">
+        <h3 class="panel-title">告警趋势 (近15分钟)</h3>
+        <div id="lineChart" class="chart-box"></div>
+      </div>
+      <div class="chart-container">
+        <h3 class="panel-title">告警画像</h3>
+        <div id="radarChart" class="chart-box"></div>
+      </div>
+    </section>
+
+    <section class="bottom-row">
+      <div class="chart-container">
+        <h3 class="panel-title">等级分布</h3>
+        <div id="donutChart" class="chart-box"></div>
+      </div>
+      
+      <div class="chart-container">
+        <h3 class="panel-title">系统健康指标</h3>
+        <div class="gauges-grid">
+          <div class="gauge-item">
+            <div id="gauge1" class="gauge-chart-wrapper"></div>
+            <div class="gauge-label" style="color: #00f0ff">健康度</div>
+          </div>
+          <div class="gauge-item">
+            <div id="gauge2" class="gauge-chart-wrapper"></div>
+            <div class="gauge-label" style="color: #ff00ff">压力</div>
+          </div>
+          <div class="gauge-item">
+            <div id="gauge3" class="gauge-chart-wrapper"></div>
+            <div class="gauge-label" style="color: #00ff88">置信度</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <h3 class="panel-title">活动日志流</h3>
+        <div class="log-list" id="activity-log"></div>
+      </div>
+    </section>
+
+    <section class="status-row">
+      <div class="chart-container">
+        <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
+          <h3 class="panel-title" style="margin:0">服务状态监控</h3>
+          <span style="font-size:0.8rem; color:var(--accent-color)">● 全部服务正常运行中</span>
+        </div>
+        <div class="status-grid" id="service-grid"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  // 1. 时钟
+  setInterval(() => {
+    document.getElementById('clock').innerText = new Date().toLocaleTimeString('zh-CN');
+  }, 1000);
+
+  // 2. 初始化图表
+  const initCharts = () => {
+    // --- 折线图 ---
+    const lineChart = echarts.init(document.getElementById('lineChart'));
+    lineChart.setOption({
+      backgroundColor: 'transparent',
+      tooltip: { trigger: 'axis', backgroundColor: 'rgba(10,20,40,0.9)', borderColor: '#00f0ff', textStyle: { color: '#fff' } },
+      grid: { top: 30, right: 20, bottom: 20, left: 40, containLabel: true },
+      xAxis: { type: 'category', data: Array.from({length: 15}, (_, i) => `${15-i}m`), axisLine: { lineStyle: { color: '#888' } }, axisLabel: { color: '#888' } },
+      yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }, axisLabel: { color: '#888' } },
+      series: [
+        { name: 'P1', type: 'line', smooth: true, data: [0,0,1,0,2,0,0,1,3,0,1,0,2,1,1], itemStyle: { color: '#ff4444' } },
+        { name: 'P2', type: 'line', smooth: true, data: [2,3,4,2,5,3,4,6,4,3,5,4,3,5,4], itemStyle: { color: '#ffaa00' } },
+        { name: 'P3', type: 'line', smooth: true, data: [5,4,6,8,5,7,6,5,8,9,6,7,5,6,6], itemStyle: { color: '#00ff88' } }
+      ]
+    });
+
+    // --- 雷达图 ---
+    const radarChart = echarts.init(document.getElementById('radarChart'));
+    radarChart.setOption({
+      radar: {
+        indicator: [{ name: 'ERROR%', max: 100 }, { name: 'WARN%', max: 100 }, { name: 'Templates', max: 50 }, { name: 'Keywords', max: 50 }, { name: 'Prob%', max: 100 }, { name: 'Records', max: 200 }],
+        splitArea: { show: false }, axisLine: { lineStyle: { color: 'rgba(0,240,255,0.3)' } }, splitLine: { lineStyle: { color: 'rgba(0,240,255,0.1)' } }
+      },
+      series: [{ type: 'radar', data: [{ value: [85, 40, 20, 15, 98, 120], name: '当前窗口', itemStyle: { color: '#00f0ff' }, areaStyle: { color: 'rgba(0,240,255,0.2)' } }] }]
+    });
+
+    // --- 环形图 ---
+    const donutChart = echarts.init(document.getElementById('donutChart'));
+    donutChart.setOption({
+      series: [{
+        type: 'pie', radius: ['50%', '70%'], avoidLabelOverlap: false, label: { show: false },
+        emphasis: { label: { show: true, fontSize: 14, color: '#fff', fontWeight: 'bold' } },
+        data: [{ value: 12, name: 'P1 严重', itemStyle: { color: '#ff4444' } }, { value: 45, name: 'P2 警告', itemStyle: { color: '#ffaa00' } }, { value: 67, name: 'P3 其他', itemStyle: { color: '#00ff88' } }]
+      }]
+    });
+
+    // --- [修复重点] 分离的仪表盘函数 ---
+    const createGauge = (domId, value, color) => {
+      const chart = echarts.init(document.getElementById(domId));
+      chart.setOption({
+        series: [{
+          type: 'gauge',
+          startAngle: 180, endAngle: 0,
+          min: 0, max: 100,
+          splitNumber: 1,
+          itemStyle: { color: color },
+          progress: { show: true, width: 8 },
+          pointer: { show: false },
+          axisLine: { lineStyle: { width: 8, color: [[1, 'rgba(255,255,255,0.1)']] } },
+          axisTick: { show: false }, splitLine: { show: false }, axisLabel: { show: false },
+          // 调整 detail 位置，使其位于半圆环圆心正下方
+          detail: { valueAnimation: true, offsetCenter: [0, '0%'], fontSize: 20, color: color, formatter: '{value}%' },
+          data: [{ value: value }]
+        }]
+      });
+      return chart;
+    };
+
+    // 分别初始化三个仪表盘
+    const g1 = createGauge('gauge1', 92, '#00f0ff');
+    const g2 = createGauge('gauge2', 45, '#ff00ff');
+    const g3 = createGauge('gauge3', 98, '#00ff88');
+
+    // 窗口缩放自适应
+    window.addEventListener('resize', () => {
+      lineChart.resize(); radarChart.resize(); donutChart.resize();
+      g1.resize(); g2.resize(); g3.resize();
+    });
+  };
+
+  // 3. 服务列表
+  const renderServices = () => {
+    const container = document.getElementById('service-grid');
+    const svcs = [
+      { n: 'FastAPI Backend', e: '/api/v1' }, { n: 'Kafka Cluster', e: 'kafka:9092' },
+      { n: 'Spark Engine', e: 'spark:7077' }, { n: 'MariaDB', e: 'mysql:3306' },
+      { n: 'HDFS Storage', e: 'namenode:9000' }, { n: 'HBase', e: 'hbase:16000' },
+      { n: 'Hive Metastore', e: 'hive:9083' }
+    ];
+    container.innerHTML = svcs.map((s, i) => `
+      <div class="service-card" style="border-left-color: ${i===0?'#00f0ff':'#00ff88'}">
+        <div class="svc-header"><span class="svc-name">${s.n}</span><span class="svc-dot" style="background:${i===0?'#00f0ff':'#00ff88'}"></span></div>
+        <div class="svc-meta"><span class="svc-endpoint">${s.e}</span><span class="svc-latency" id="lat-${i}">${Math.floor(Math.random()*20+5)}ms</span></div>
+      </div>
+    `).join('');
+  };
+
+  // 4. 日志
+  const renderLogs = () => {
+    const c = document.getElementById('activity-log');
+    const msgs = ['[P1] instance_error @ vm-9f (p=98%)', '[P2] net_timeout @ net-01 (p=75%)', '[P3] disk_slow @ st-2 (p=55%)', '[P1] conn_lost @ kvm (p=99%)'];
+    let html = '';
+    msgs.forEach((m, i) => html += `<div class="log-item ${m.includes('P1')?'log-p1':''}"><span class="log-time">${new Date().toLocaleTimeString()}</span><span class="log-msg">${m}</span></div>`);
+    c.innerHTML = html;
+  };
+
+  window.onload = () => { initCharts(); renderServices(); renderLogs(); };
+  setInterval(() => {
+    document.getElementById('header-latency').innerText = Math.floor(Math.random()*20+30)+'ms';
+    // 刷新延迟数据
+    for(let i=0; i<7; i++) {
+      const el = document.getElementById(`lat-${i}`);
+      if(el) el.innerText = Math.floor(Math.random()*40+5)+'ms';
+    }
+  }, 2000);
+</script>
+</body>
+</html>
